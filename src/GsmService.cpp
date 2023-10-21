@@ -9,7 +9,7 @@ namespace gsm {
 static constexpr char logTag[] = "GSM";
 
 namespace {
-NetworkStatus checkNetworkStatus(const std::string& response) {
+NetworkStatus getNetworkStatus(const std::string& response) {
     const auto statusIndex = response.find(',');
     if (statusIndex == std::string::npos) {
         ESP_LOGE(logTag, "%s: Invalid response: %s", __func__, response.c_str());
@@ -23,6 +23,11 @@ NetworkStatus checkNetworkStatus(const std::string& response) {
     }
 
     return magic_enum::enum_cast<NetworkStatus>(std::stoi(status)).value_or(NetworkStatus::Unknown);
+}
+
+bool checkNetworkStatus(const Response& response) {
+    const auto status = getNetworkStatus(response.content);
+    return response.success && (status == NetworkStatus::RegisteredHome || status == NetworkStatus::RegisteredRoaming);
 }
 }  // namespace
 
@@ -65,16 +70,12 @@ bool GsmController::moduleConnected() {
 
 bool GsmController::networkConnected() {
     sendAtCommand("AT+CREG?");
-    const auto response = getResponse();
-    const auto status = checkNetworkStatus(response.content);
-    return response.success && (status == NetworkStatus::RegisteredHome || status == NetworkStatus::RegisteredRoaming);
+    return checkNetworkStatus(getResponse());
 }
 
 bool GsmController::gprsConnected() {
     sendAtCommand("AT+CGREG?");
-    const auto response = getResponse();
-    const auto status = checkNetworkStatus(response.content);
-    return response.success && (status == NetworkStatus::RegisteredHome || status == NetworkStatus::RegisteredRoaming);
+    return checkNetworkStatus(getResponse());
 }
 
 void GsmController::connectGprs() {
