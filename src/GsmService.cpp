@@ -2,9 +2,29 @@
 
 #include <esp_log.h>
 
+#include <magic_enum.hpp>
+
 namespace gsm {
 
 static constexpr char logTag[] = "GSM";
+
+namespace {
+NetworkStatus checkNetworkStatus(const std::string& response) {
+    const auto statusIndex = response.find(',');
+    if (statusIndex == std::string::npos) {
+        ESP_LOGE(logTag, "%s: Invalid response: %s", __func__, response.c_str());
+        return NetworkStatus::Unknown;
+    }
+
+    const auto status = response.substr(statusIndex + 1, 1);
+    if (!std::isdigit(status[0])) {
+        ESP_LOGE(logTag, "%s: Invalid status: %s", __func__, status.c_str());
+        return NetworkStatus::Unknown;
+    }
+
+    return magic_enum::enum_cast<NetworkStatus>(std::stoi(status)).value_or(NetworkStatus::Unknown);
+}
+}  // namespace
 
 GsmController::GsmController(UartController&& uart) : uart(uart) {
 }
@@ -33,24 +53,28 @@ void GsmController::sendAtCommand(const AtCommand& command) {
 Response GsmController::getResponse() {
     const auto responseString = uart.read();
     return Response{
-        .valid = responseString.contains("OK"),
-        .response = responseString,
+        .success = responseString.contains("OK"),
+        .content = responseString,
     };
 }
 
 bool GsmController::moduleConnected() {
     sendAtCommand("AT");
-    return getResponse().valid;
+    return getResponse().success;
 }
 
 bool GsmController::networkConnected() {
     sendAtCommand("AT+CREG?");
-    return getResponse().valid;
+    const auto response = getResponse();
+    const auto status = checkNetworkStatus(response.content);
+    return response.success && (status == NetworkStatus::RegisteredHome || status == NetworkStatus::RegisteredRoaming);
 }
 
 bool GsmController::gprsConnected() {
     sendAtCommand("AT+CGREG?");
-    return getResponse().valid;
+    const auto response = getResponse();
+    const auto status = checkNetworkStatus(response.content);
+    return response.success && (status == NetworkStatus::RegisteredHome || status == NetworkStatus::RegisteredRoaming);
 }
 
 void GsmController::connectGprs() {
