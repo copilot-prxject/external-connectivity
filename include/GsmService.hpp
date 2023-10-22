@@ -8,6 +8,19 @@ namespace gsm {
 
 using AtCommand = std::string;
 
+enum class Result {
+    Ok,
+    Error,
+    Unknown,
+};
+
+bool operator!(Result result);
+
+struct Response {
+    std::string content;
+    Result type;
+};
+
 enum class NetworkStatus {
     NotRegistered = 0,
     RegisteredHome = 1,
@@ -17,27 +30,24 @@ enum class NetworkStatus {
     RegisteredRoaming = 5,
 };
 
-struct Response {
-    bool success;
-    std::string content;
-};
-
 class GsmController {
 public:
     GsmController(UartController&& uart);
 
     void eventLoop();
 
-    void sendAtCommand(const AtCommand& command);
-    Response getResponse();
+    Result sendCommandGetResult(const AtCommand& command);
 
     bool moduleConnected();
     bool networkConnected();
     bool gprsConnected();
 
-    void connectGprs();
+    Result connectGprs();
 
 private:
+    void sendAtCommand(const AtCommand& command);
+    Response getResponse();
+
     UartController& uart;
 };
 

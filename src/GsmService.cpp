@@ -5,7 +5,6 @@
 #include <magic_enum.hpp>
 
 namespace gsm {
-
 static constexpr char logTag[] = "GSM";
 
 namespace {
@@ -16,6 +15,7 @@ NetworkStatus getNetworkStatus(const std::string& response) {
         return NetworkStatus::Unknown;
     }
 
+    assert(statusIndex + 1 < response.size());
     const auto status = response.substr(statusIndex + 1, 1);
     if (!std::isdigit(status[0])) {
         ESP_LOGE(logTag, "%s: Invalid status: %s", __func__, status.c_str());
@@ -27,9 +27,14 @@ NetworkStatus getNetworkStatus(const std::string& response) {
 
 bool checkNetworkStatus(const Response& response) {
     const auto status = getNetworkStatus(response.content);
-    return response.success && (status == NetworkStatus::RegisteredHome || status == NetworkStatus::RegisteredRoaming);
+    return response.type == Result::Ok &&
+           (status == NetworkStatus::RegisteredHome || status == NetworkStatus::RegisteredRoaming);
 }
 }  // namespace
+
+bool operator!(Result result) {
+    return result != Result::Ok;
+}
 
 GsmController::GsmController(UartController&& uart) : uart(uart) {
 }
@@ -37,7 +42,7 @@ GsmController::GsmController(UartController&& uart) : uart(uart) {
 void GsmController::eventLoop() {
     while (true) {
         if (!moduleConnected()) {
-            ESP_LOGW(logTag, "%s: GSM module is not connected", __func__);
+            ESP_LOGW(logTag, "%s: No connection to the GSM module", __func__);
             continue;
         }
         if (!networkConnected()) {
@@ -46,26 +51,36 @@ void GsmController::eventLoop() {
         }
         if (!gprsConnected()) {
             ESP_LOGI(logTag, "%s: Connecting to GPRS", __func__);
-            connectGprs();
+            if (connectGprs() != Result::Ok) {
+                ESP_LOGE(logTag, "%s: Failed to connect to GPRS", __func__);
+                continue;
+            }
         }
     }
 }
 
+Result GsmController::sendCommandGetResult(const AtCommand& command) {
+    sendAtCommand(command);
+    return getResponse().type;
+}
+
 void GsmController::sendAtCommand(const AtCommand& command) {
-    uart.write(command + "\r");
+    uart.write(command + '\r');
 }
 
 Response GsmController::getResponse() {
     const auto responseString = uart.read();
+    const auto responseType = (responseString.contains("OK"))
+                                  ? Result::Ok
+                                  : (responseString.contains("ERROR") ? Result::Error : Result::Unknown);
     return Response{
-        .success = responseString.contains("OK"),
         .content = responseString,
+        .type = responseType,
     };
 }
 
 bool GsmController::moduleConnected() {
-    sendAtCommand("AT");
-    return getResponse().success;
+    return sendCommandGetResult("AT") == Result::Ok;
 }
 
 bool GsmController::networkConnected() {
@@ -78,58 +93,29 @@ bool GsmController::gprsConnected() {
     return checkNetworkStatus(getResponse());
 }
 
-void GsmController::connectGprs() {
+Result GsmController::connectGprs() {
     const std::string apn = "internet";
     const std::string user = "";
     const std::string password = "";
 
-    sendAtCommand("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"");
-    getResponse();
+    if (!sendCommandGetResult("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\"")) return Result::Error;
+    if (!sendCommandGetResult("AT+SAPBR=3,1,\"APN\",\"" + apn + "\"")) return Result::Error;
+    if (!sendCommandGetResult("AT+SAPBR=3,1,\"USER\",\"" + user + "\"")) return Result::Error;
+    if (!sendCommandGetResult("AT+SAPBR=3,1,\"PWD\",\"" + password + "\"")) return Result::Error;
+    if (!sendCommandGetResult("AT+CGDCONT=1,\"IP\",\"" + apn + "\"")) return Result::Error;
+    if (!sendCommandGetResult("AT+CGACT=1,1")) return Result::Error;
+    if (!sendCommandGetResult("AT+SAPBR=1,1")) return Result::Error;
+    if (!sendCommandGetResult("AT+SAPBR=2,1")) return Result::Error;
+    if (!sendCommandGetResult("AT+CGATT=1")) return Result::Error;
+    if (!sendCommandGetResult("AT+CIPMUX=1")) return Result::Error;
+    if (!sendCommandGetResult("AT+CIPQSEND=1")) return Result::Error;
+    if (!sendCommandGetResult("AT+CIPRXGET=1")) return Result::Error;
+    if (!sendCommandGetResult("AT+CSTT=\"" + apn + "\",\"" + user + "\",\"" + password + "\"")) return Result::Error;
+    if (!sendCommandGetResult("AT+CIICR")) return Result::Error;
+    if (!sendCommandGetResult("AT+CIFSR;E0")) return Result::Error;
+    if (!sendCommandGetResult("AT+CDNSCFG=\"8.8.8.8\",\"8.8.4.4\"")) return Result::Error;
 
-    sendAtCommand("AT+SAPBR=3,1,\"APN\",\"" + apn + "\"");
-    getResponse();
-
-    sendAtCommand("AT+SAPBR=3,1,\"USER\",\"" + user + "\"");
-    getResponse();
-
-    sendAtCommand("AT+SAPBR=3,1,\"PWD\",\"" + password + "\"");
-    getResponse();
-
-    sendAtCommand("AT+CGDCONT=1,\"IP\",\"" + apn + "\"");
-    getResponse();
-
-    sendAtCommand("AT+CGACT=1,1");
-    getResponse();
-
-    sendAtCommand("AT+SAPBR=1,1");
-    getResponse();
-
-    sendAtCommand("AT+SAPBR=2,1");
-    getResponse();
-
-    sendAtCommand("AT+CGATT=1");
-    getResponse();
-
-    sendAtCommand("AT+CIPMUX=1");
-    getResponse();
-
-    sendAtCommand("AT+CIPQSEND=1");
-    getResponse();
-
-    sendAtCommand("AT+CIPRXGET=1");
-    getResponse();
-
-    sendAtCommand("AT+CSTT=\"" + apn + "\",\"" + user + "\",\"" + password + "\"");
-    getResponse();
-
-    sendAtCommand("AT+CIICR");
-    getResponse();
-
-    sendAtCommand("AT+CIFSR;E0");
-    getResponse();
-
-    sendAtCommand("AT+CDNSCFG=\"8.8.8.8\",\"8.8.4.4\"");
-    getResponse();
+    return Result::Ok;
 }
 
 }  // namespace gsm
