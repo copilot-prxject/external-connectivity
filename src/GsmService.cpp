@@ -51,12 +51,6 @@ void GsmController::eventLoop() {
             ESP_LOGW(logTag, "%s: Communication not ready", __func__);
             continue;
         }
-
-        if (ping("www.google.com") != Result::Ok) {
-            ESP_LOGW(logTag, "%s: Ping failed", __func__);
-            continue;
-        }
-
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
@@ -111,20 +105,27 @@ bool GsmController::networkConnected() {
 
 bool GsmController::gprsConnected() {
     sendAtCommand("AT+CIFSR");
-    const auto response = uart.read();
+    const auto localIp = getLocalIp();
+    if (localIp.empty()) {
+        ESP_LOGE(logTag, "%s: Failed to get local IP", __func__);
+        return false;
+    }
+    return true;
+}
 
+Address GsmController::getLocalIp() {
+    const auto response = uart.read();
     const std::regex ipRegex(R"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})");
     std::smatch match;
     if (!std::regex_search(response, match, ipRegex)) {
         ESP_LOGE(logTag, "%s: Failed to parse IP address from response: %s", __func__, response.c_str());
-        return false;
+        return "";
     }
 
-    localIp = match.str();
-    return true;
+    return match.str();
 }
 
-Result GsmController::ping(const std::string& host) {
+Result GsmController::ping(const Address& host) {
     const int retryCount = 1;
     const int timeoutInTenthOfSeconds = 100;  // 100 * 0.1s = 100 * 100ms = 10s
 

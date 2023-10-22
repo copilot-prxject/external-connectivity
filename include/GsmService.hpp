@@ -6,6 +6,7 @@ using uart::UartController;
 
 namespace gsm {
 using AtCommand = std::string;
+using Address = std::string;
 
 static constexpr auto defaultReadTimeout = pdMS_TO_TICKS(1000);
 
@@ -47,12 +48,13 @@ private:
     bool networkConnected();
     bool gprsConnected();
 
-    Result ping(const std::string& host);
+    Address getLocalIp();
+    Result ping(const Address& host);
     Result connectGprs();
     Result setNetlightIndication(int value);
 
     UartController& uart;
-    std::string localIp;
+    Address localIp;
 };
 
 }  // namespace gsm
