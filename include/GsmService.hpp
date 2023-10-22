@@ -36,17 +36,17 @@ public:
 
     void eventLoop();
 
+private:
     Result sendCommandGetResult(const AtCommand& command);
+    void sendAtCommand(const AtCommand& command);
+    Response getResponse();
 
     bool moduleConnected();
     bool networkConnected();
     bool gprsConnected();
 
     Result connectGprs();
-
-private:
-    void sendAtCommand(const AtCommand& command);
-    Response getResponse();
+    Result setNetlightIndication(int value);
 
     UartController& uart;
 };

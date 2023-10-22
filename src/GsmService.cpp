@@ -37,6 +37,10 @@ bool operator!(Result result) {
 }
 
 GsmController::GsmController(UartController&& uart) : uart(uart) {
+    const int ledDisabled = 0;
+    if (!setNetlightIndication(ledDisabled)) {
+        ESP_LOGE(logTag, "%s: Failed to disable the netlight indication", __func__);
+    }
 }
 
 void GsmController::eventLoop() {
@@ -115,6 +119,11 @@ Result GsmController::connectGprs() {
     if (!sendCommandGetResult("AT+CIFSR;E0")) return Result::Error;
     if (!sendCommandGetResult("AT+CDNSCFG=\"8.8.8.8\",\"8.8.4.4\"")) return Result::Error;
 
+    return Result::Ok;
+}
+
+Result GsmController::setNetlightIndication(int value) {
+    if (!sendCommandGetResult("AT+CSGS=" + std::to_string(value))) return Result::Error;
     return Result::Ok;
 }
 
