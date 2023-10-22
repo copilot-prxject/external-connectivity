@@ -5,8 +5,9 @@
 using uart::UartController;
 
 namespace gsm {
-
 using AtCommand = std::string;
+
+static constexpr auto defaultReadTimeout = pdMS_TO_TICKS(1000);
 
 enum class Result {
     Ok,
@@ -39,16 +40,19 @@ public:
 private:
     Result sendCommandGetResult(const AtCommand& command);
     void sendAtCommand(const AtCommand& command);
-    Response getResponse();
+    Response getResponse(TickType_t timeout = defaultReadTimeout);
 
+    bool communicationReady();
     bool moduleConnected();
     bool networkConnected();
     bool gprsConnected();
 
+    Result ping(const std::string& host);
     Result connectGprs();
     Result setNetlightIndication(int value);
 
     UartController& uart;
+    std::string localIp;
 };
 
 }  // namespace gsm

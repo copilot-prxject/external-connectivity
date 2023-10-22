@@ -1,11 +1,13 @@
 #include "GsmService.hpp"
 
 #include <esp_log.h>
+#include <fmt/format.h>
 
 #include <magic_enum.hpp>
+#include <regex>
 
 namespace gsm {
-static constexpr char logTag[] = "GSM";
+static constexpr auto logTag = "GSM";
 
 namespace {
 NetworkStatus getNetworkStatus(const std::string& response) {
@@ -45,21 +47,17 @@ GsmController::GsmController(UartController&& uart) : uart(uart) {
 
 void GsmController::eventLoop() {
     while (true) {
-        if (!moduleConnected()) {
-            ESP_LOGW(logTag, "%s: No connection to the GSM module", __func__);
+        if (!communicationReady()) {
+            ESP_LOGW(logTag, "%s: Communication not ready", __func__);
             continue;
         }
-        if (!networkConnected()) {
-            ESP_LOGW(logTag, "%s: No connection to the network", __func__);
+
+        if (ping("www.google.com") != Result::Ok) {
+            ESP_LOGW(logTag, "%s: Ping failed", __func__);
             continue;
         }
-        if (!gprsConnected()) {
-            ESP_LOGI(logTag, "%s: Connecting to GPRS", __func__);
-            if (connectGprs() != Result::Ok) {
-                ESP_LOGE(logTag, "%s: Failed to connect to GPRS", __func__);
-                continue;
-            }
-        }
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
@@ -72,7 +70,7 @@ void GsmController::sendAtCommand(const AtCommand& command) {
     uart.write(command + '\r');
 }
 
-Response GsmController::getResponse() {
+Response GsmController::getResponse(TickType_t timeout) {
     const auto responseString = uart.read();
     const auto responseType = (responseString.contains("OK"))
                                   ? Result::Ok
@@ -81,6 +79,25 @@ Response GsmController::getResponse() {
         .content = responseString,
         .type = responseType,
     };
+}
+
+bool GsmController::communicationReady() {
+    if (!moduleConnected()) {
+        ESP_LOGW(logTag, "%s: No connection to the GSM module", __func__);
+        return false;
+    }
+    if (!networkConnected()) {
+        ESP_LOGW(logTag, "%s: No connection to the network", __func__);
+        return false;
+    }
+    if (!gprsConnected()) {
+        ESP_LOGI(logTag, "%s: Connecting to GPRS", __func__);
+        if (connectGprs() != Result::Ok) {
+            ESP_LOGE(logTag, "%s: Failed to connect to GPRS", __func__);
+            return false;
+        }
+    }
+    return true;
 }
 
 bool GsmController::moduleConnected() {
@@ -93,8 +110,33 @@ bool GsmController::networkConnected() {
 }
 
 bool GsmController::gprsConnected() {
-    sendAtCommand("AT+CGREG?");
-    return checkNetworkStatus(getResponse());
+    sendAtCommand("AT+CIFSR");
+    const auto response = uart.read();
+
+    const std::regex ipRegex(R"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})");
+    std::smatch match;
+    if (!std::regex_search(response, match, ipRegex)) {
+        ESP_LOGE(logTag, "%s: Failed to parse IP address from response: %s", __func__, response.c_str());
+        return false;
+    }
+
+    localIp = match.str();
+    return true;
+}
+
+Result GsmController::ping(const std::string& host) {
+    const int retryCount = 1;
+    const int timeoutInTenthOfSeconds = 100;  // 100 * 0.1s = 100 * 100ms = 10s
+
+    sendAtCommand(fmt::format("AT+CIPPING=\"{}\",{},{}", host, retryCount, timeoutInTenthOfSeconds));
+    const auto response = getResponse();
+
+    if (response.type != Result::Ok) {
+        ESP_LOGE(logTag, "%s: Ping failed: %s", __func__, response.content.c_str());
+        return Result::Error;
+    }
+
+    return Result::Ok;
 }
 
 Result GsmController::connectGprs() {
