@@ -7,7 +7,7 @@
 #include <regex>
 
 namespace gsm {
-static constexpr auto logTag = "GSM";
+static constexpr auto logTag = "gsm";
 
 namespace {
 NetworkStatus getNetworkStatus(const std::string& response) {
@@ -39,19 +39,22 @@ bool operator!(Result result) {
 }
 
 GsmController::GsmController(UartController&& uart) : uart(uart) {
+    uart.responseCallback = [this](std::string data) { handleResponse(data); };
+
     const int ledDisabled = 0;
     if (!setNetlightIndication(ledDisabled)) {
         ESP_LOGE(logTag, "%s: Failed to disable the netlight indication", __func__);
     }
 }
 
-void GsmController::eventLoop() {
+void GsmController::loop() {
     while (true) {
-        if (!communicationReady()) {
-            ESP_LOGW(logTag, "%s: Communication not ready", __func__);
-            continue;
-        }
+        sendAtCommand("AT+CREG?");
         vTaskDelay(pdMS_TO_TICKS(1000));
+        //     if (!communicationReady()) {
+        //         ESP_LOGW(logTag, "%s: Communication not ready", __func__);
+        //         continue;
+        //     }
     }
 }
 
@@ -62,6 +65,7 @@ Result GsmController::sendCommandGetResult(const AtCommand& command) {
 
 void GsmController::sendAtCommand(const AtCommand& command) {
     uart.write(command + '\r');
+    xSemaphoreTake(uart.semaphore, pdMS_TO_TICKS(1000));
 }
 
 Response GsmController::getResponse(TickType_t timeout) {
@@ -73,6 +77,10 @@ Response GsmController::getResponse(TickType_t timeout) {
         .content = responseString,
         .type = responseType,
     };
+}
+
+void GsmController::handleResponse(std::string& response) {
+    ESP_LOGD(logTag, "%s: Received response:\n%s", __func__, response.c_str());
 }
 
 bool GsmController::communicationReady() {

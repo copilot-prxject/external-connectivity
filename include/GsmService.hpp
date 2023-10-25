@@ -36,12 +36,13 @@ class GsmController {
 public:
     GsmController(UartController&& uart);
 
-    void eventLoop();
+    void loop();
 
 private:
     Result sendCommandGetResult(const AtCommand& command);
     void sendAtCommand(const AtCommand& command);
     Response getResponse(TickType_t timeout = defaultReadTimeout);
+    void handleResponse(std::string& response);
 
     bool communicationReady();
     bool moduleConnected();
