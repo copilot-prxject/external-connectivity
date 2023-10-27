@@ -2,9 +2,8 @@
 
 #include <UartController.hpp>
 
-using uart::UartController;
-
 namespace gsm {
+using uart::UartController;
 using AtCommand = std::string;
 using Address = std::string;
 
@@ -41,8 +40,7 @@ public:
 private:
     Result sendCommandGetResult(const AtCommand& command);
     void sendAtCommand(const AtCommand& command);
-    Response getResponse(TickType_t timeout = defaultReadTimeout);
-    void handleResponse(std::string& response);
+    void handleResponse(std::string& line);
 
     bool communicationReady();
     bool moduleConnected();
@@ -55,7 +53,7 @@ private:
     Result setNetlightIndication(int value);
 
     UartController& uart;
-    Address localIp;
+    Response latestResponse;
 };
 
 }  // namespace gsm

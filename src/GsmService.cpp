@@ -40,27 +40,21 @@ bool operator!(Result result) {
 
 GsmController::GsmController(UartController&& uart) : uart(uart) {
     uart.responseCallback = [this](std::string data) { handleResponse(data); };
-
-    const int ledDisabled = 0;
-    if (!setNetlightIndication(ledDisabled)) {
-        ESP_LOGE(logTag, "%s: Failed to disable the netlight indication", __func__);
-    }
 }
 
 void GsmController::loop() {
     while (true) {
-        sendAtCommand("AT+CREG?");
         vTaskDelay(pdMS_TO_TICKS(1000));
-        //     if (!communicationReady()) {
-        //         ESP_LOGW(logTag, "%s: Communication not ready", __func__);
-        //         continue;
-        //     }
+        if (!communicationReady()) {
+            ESP_LOGW(logTag, "%s: Communication not ready", __func__);
+            continue;
+        }
     }
 }
 
 Result GsmController::sendCommandGetResult(const AtCommand& command) {
     sendAtCommand(command);
-    return getResponse().type;
+    return latestResponse.type;
 }
 
 void GsmController::sendAtCommand(const AtCommand& command) {
@@ -68,19 +62,13 @@ void GsmController::sendAtCommand(const AtCommand& command) {
     xSemaphoreTake(uart.semaphore, pdMS_TO_TICKS(1000));
 }
 
-Response GsmController::getResponse(TickType_t timeout) {
-    const auto responseString = uart.read();
-    const auto responseType = (responseString.contains("OK"))
-                                  ? Result::Ok
-                                  : (responseString.contains("ERROR") ? Result::Error : Result::Unknown);
-    return Response{
-        .content = responseString,
-        .type = responseType,
-    };
-}
-
 void GsmController::handleResponse(std::string& response) {
-    ESP_LOGD(logTag, "%s: Received response:\n%s", __func__, response.c_str());
+    const auto responseType =
+        (response.contains("OK")) ? Result::Ok : (response.contains("ERROR") ? Result::Error : Result::Unknown);
+    if (responseType != Result::Unknown) {
+        ESP_LOGD(logTag, "%s: Response:\n%s", __func__, response.c_str());
+        latestResponse = {response, responseType};
+    }
 }
 
 bool GsmController::communicationReady() {
@@ -98,21 +86,26 @@ bool GsmController::communicationReady() {
             ESP_LOGE(logTag, "%s: Failed to connect to GPRS", __func__);
             return false;
         }
+        const int ledDisabled = 0;
+        if (!setNetlightIndication(ledDisabled)) {
+            ESP_LOGE(logTag, "%s: Failed to disable the netlight indication", __func__);
+        }
     }
     return true;
 }
 
 bool GsmController::moduleConnected() {
-    return sendCommandGetResult("AT") == Result::Ok;
+    sendAtCommand("AT");
+    return latestResponse.type == Result::Ok;
 }
 
 bool GsmController::networkConnected() {
     sendAtCommand("AT+CREG?");
-    return checkNetworkStatus(getResponse());
+    return checkNetworkStatus(latestResponse);
 }
 
 bool GsmController::gprsConnected() {
-    sendAtCommand("AT+CIFSR");
+    if (!sendCommandGetResult("AT+CIFSR;E0")) return false;
     const auto localIp = getLocalIp();
     if (localIp.empty()) {
         ESP_LOGE(logTag, "%s: Failed to get local IP", __func__);
@@ -122,11 +115,10 @@ bool GsmController::gprsConnected() {
 }
 
 Address GsmController::getLocalIp() {
-    const auto response = uart.read();
     const std::regex ipRegex(R"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})");
     std::smatch match;
-    if (!std::regex_search(response, match, ipRegex)) {
-        ESP_LOGE(logTag, "%s: Failed to parse IP address from response: %s", __func__, response.c_str());
+    if (!std::regex_search(latestResponse.content, match, ipRegex)) {
+        ESP_LOGE(logTag, "%s: Failed to parse IP address from response: %s", __func__, latestResponse.content.c_str());
         return "";
     }
 
@@ -138,10 +130,9 @@ Result GsmController::ping(const Address& host) {
     const int timeoutInTenthOfSeconds = 100;  // 100 * 0.1s = 100 * 100ms = 10s
 
     sendAtCommand(fmt::format("AT+CIPPING=\"{}\",{},{}", host, retryCount, timeoutInTenthOfSeconds));
-    const auto response = getResponse();
 
-    if (response.type != Result::Ok) {
-        ESP_LOGE(logTag, "%s: Ping failed: %s", __func__, response.content.c_str());
+    if (latestResponse.type != Result::Ok) {
+        ESP_LOGE(logTag, "%s: Ping failed: %s", __func__, latestResponse.content.c_str());
         return Result::Error;
     }
 
