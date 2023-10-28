@@ -49,6 +49,7 @@ void GsmController::loop() {
             ESP_LOGW(logTag, "%s: Communication not ready", __func__);
             continue;
         }
+        ping("www.google.com");
     }
 }
 
@@ -59,7 +60,7 @@ Result GsmController::sendCommandGetResult(const AtCommand& command) {
 
 void GsmController::sendAtCommand(const AtCommand& command) {
     uart.write(command + '\r');
-    xSemaphoreTake(uart.semaphore, pdMS_TO_TICKS(1000));
+    xSemaphoreTake(uart.semaphore, portMAX_DELAY);
 }
 
 void GsmController::handleResponse(std::string& response) {
@@ -127,9 +128,7 @@ Address GsmController::getLocalIp() {
 
 Result GsmController::ping(const Address& host) {
     const int retryCount = 1;
-    const int timeoutInTenthOfSeconds = 100;  // 100 * 0.1s = 100 * 100ms = 10s
-
-    sendAtCommand(fmt::format("AT+CIPPING=\"{}\",{},{}", host, retryCount, timeoutInTenthOfSeconds));
+    sendAtCommand(fmt::format("AT+CIPPING=\"{}\",{}", host, retryCount));
 
     if (latestResponse.type != Result::Ok) {
         ESP_LOGE(logTag, "%s: Ping failed: %s", __func__, latestResponse.content.c_str());
