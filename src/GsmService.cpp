@@ -67,7 +67,7 @@ void GsmController::handleResponse(std::string& response) {
     const auto responseType =
         (response.contains("OK")) ? Result::Ok : (response.contains("ERROR") ? Result::Error : Result::Unknown);
     if (responseType != Result::Unknown) {
-        ESP_LOGD(logTag, "%s: Response:\n%s", __func__, response.c_str());
+        ESP_LOGD(logTag, "%s: Response:%s", __func__, response.c_str());
         latestResponse = {response, responseType};
     }
 }
@@ -127,7 +127,7 @@ Address GsmController::getLocalIp() {
 }
 
 Result GsmController::ping(const Address& host) {
-    const int retryCount = 1;
+    const int retryCount = 3;
     sendAtCommand(fmt::format("AT+CIPPING=\"{}\",{}", host, retryCount));
 
     if (latestResponse.type != Result::Ok) {
