@@ -1,0 +1,9 @@
+menu "external-connectivity"
+    config EXT_CON_ENABLE_REPL
+        bool "Enable console REPL"
+        default n
+        help
+            Enable console REPL (read-eval-print loop) for external connectivity.
+            This allows you to interact with the device via a serial console.
+            This is useful for debugging and development.
+endmenu
