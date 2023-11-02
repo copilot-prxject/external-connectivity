@@ -6,6 +6,11 @@ menu "external-connectivity"
             Enable console REPL (read-eval-print loop) for external connectivity.
             This allows you to interact with the device via a serial console.
             This is useful for debugging and development.
+    config EXT_CON_APN
+        string "Access Point Name (APN)"
+        default "internet"
+        help
+            APN to use for external connectivity.
     menu "UART Configuration"
         config EXT_CON_UART_PORT
             int "UART port"
