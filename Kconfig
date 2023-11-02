@@ -6,4 +6,31 @@ menu "external-connectivity"
             Enable console REPL (read-eval-print loop) for external connectivity.
             This allows you to interact with the device via a serial console.
             This is useful for debugging and development.
+    menu "UART Configuration"
+        config EXT_CON_UART_PORT
+            int "UART port"
+            default 1
+            help
+                UART port for external connectivity.
+        config EXT_CON_UART_RX_PIN
+            int "UART RX pin"
+            default 16
+            help
+                UART RX pin to use for external connectivity.
+        config EXT_CON_UART_TX_PIN
+            int "UART TX pin"
+            default 17
+            help
+                UART TX pin to use for external connectivity.
+        config EXT_CON_UART_RTS_PIN
+            int "UART RTS pin"
+            default 18
+            help
+                UART RTS pin to use for external connectivity.
+        config EXT_CON_UART_CTS_PIN
+            int "UART CTS pin"
+            default 19
+            help
+                UART CTS pin to use for external connectivity.
+    endmenu
 endmenu
