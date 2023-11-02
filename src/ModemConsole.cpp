@@ -5,7 +5,7 @@
 namespace repl {
 constexpr auto logTag = "repl";
 
-ModemConsole::ModemConsole(GsmService* gsmService) : gsmService(gsmService) {
+ModemConsole::ModemConsole(std::unique_ptr<GsmService> gsmService) : gsmService{std::move(gsmService)} {
     replConfig = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
     uartConfig = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
 }

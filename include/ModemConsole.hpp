@@ -10,7 +10,7 @@ using gsm::GsmService;
 
 class ModemConsole {
 public:
-    ModemConsole(GsmService* gsmService);
+    ModemConsole(std::unique_ptr<GsmService> gsmService);
 
     void start();
     void waitForExit();
@@ -20,7 +20,7 @@ private:
     esp_console_repl_config_t replConfig;
     esp_console_dev_uart_config_t uartConfig;
 
-    GsmService* gsmService;
+    std::unique_ptr<GsmService> gsmService;
 
     esp_modem::SignalGroup exitSignal{};
 };
