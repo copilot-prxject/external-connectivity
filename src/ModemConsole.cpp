@@ -1,8 +1,12 @@
 #include "ModemConsole.hpp"
 
+#include <magic_enum.hpp>
+#include <map>
 #include <numeric>
 
 namespace repl {
+using esp_modem::modem_mode;
+
 constexpr auto logTag = "repl";
 
 ModemConsole::ModemConsole(std::unique_ptr<GsmService> gsmService)
@@ -32,9 +36,21 @@ void CommandRegistry::registerCommands() {
     registerCommand({"exit", "Exits the console", nullptr,
                      [](int, char **) {
                          console->exitSignal.set(1);
-                         return 0;
+                         return ESP_OK;
                      },
                      nullptr});
+    registerCommand(
+        {"mode", "Sets the modem mode", "<PPP|CMD>",
+         [](int argc, char **argv) {
+             std::map<std::string, modem_mode> mode{{"PPP", modem_mode::DATA_MODE}, {"CMD", modem_mode::COMMAND_MODE}};
+             if (argc != 2 || !mode.contains(argv[1])) {
+                 return ESP_ERR_INVALID_ARG;
+             }
+             gsmService->dce->set_mode(mode[argv[1]]);
+             ESP_LOGI(logTag, "Modem mode set to %s", argv[1]);
+             return ESP_OK;
+         },
+         nullptr});
 }
 
 void CommandRegistry::registerCommand(esp_console_cmd_t command) {
