@@ -10,12 +10,12 @@ class GsmService {
 public:
     GsmService(const char* apn);
 
+    std::unique_ptr<esp_modem::DCE> dce;
+
 private:
     void configure(const char* apn);
 
-    std::unique_ptr<esp_modem::DCE> dce;
     std::shared_ptr<esp_modem::DTE> dte;
-
     esp_modem_dce_config dceConfig;
     esp_modem_dte_config dteConfig;
     esp_netif_config netifConfig;
