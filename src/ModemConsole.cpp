@@ -39,18 +39,37 @@ void CommandRegistry::registerCommands() {
                          return ESP_OK;
                      },
                      nullptr});
-    registerCommand(
-        {"mode", "Sets the modem mode", "<PPP|CMD>",
-         [](int argc, char **argv) {
-             std::map<std::string, modem_mode> mode{{"PPP", modem_mode::DATA_MODE}, {"CMD", modem_mode::COMMAND_MODE}};
-             if (argc != 2 || !mode.contains(argv[1])) {
-                 return ESP_ERR_INVALID_ARG;
-             }
-             gsmService->dce->set_mode(mode[argv[1]]);
-             ESP_LOGI(logTag, "Modem mode set to %s", argv[1]);
-             return ESP_OK;
-         },
-         nullptr});
+    registerCommand({"mode", "Sets the modem mode", "<PPP|CMD>",
+                     [](int argc, char **argv) {
+                         std::map<std::string, modem_mode> mode{
+                             {"PPP", modem_mode::DATA_MODE},
+                             {"CMD", modem_mode::COMMAND_MODE},
+                         };
+                         if (argc != 2 || !mode.contains(argv[1])) {
+                             return ESP_ERR_INVALID_ARG;
+                         }
+                         gsmService->dce->set_mode(mode[argv[1]]);
+                         ESP_LOGI(logTag, "Modem mode set to %s", argv[1]);
+                         return ESP_OK;
+                     },
+                     nullptr});
+    registerCommand({"signal", "Gets the signal strength", nullptr,
+                     [](int, char **) {
+                         int rssi, ber;
+                         gsmService->dce->get_signal_quality(rssi, ber);
+                         ESP_LOGI(logTag, "Signal strength: %d, BER: %d", rssi, ber);
+                         return ESP_OK;
+                     },
+                     nullptr});
+    registerCommand({"operator", "Gets the operator name", nullptr,
+                     [](int, char **) {
+                         std::string operatorName;
+                         int access;
+                         gsmService->dce->get_operator_name(operatorName, access);
+                         ESP_LOGI(logTag, "Operator name: %s, access: %d", operatorName.c_str(), access);
+                         return ESP_OK;
+                     },
+                     nullptr});
 }
 
 void CommandRegistry::registerCommand(esp_console_cmd_t command) {
