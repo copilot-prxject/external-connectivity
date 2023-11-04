@@ -53,6 +53,10 @@ jobs:
 
     - name: Checkout development branch
       run: |
+        cd ${{ github.workspace }}/copilot
+        if ((git branch -r) -match "/${{ github.head_ref }}`$") {
+          git checkout ${{ github.head_ref }}
+        }
         cd ${{ github.workspace }}/copilot/components/${{ github.event.repository.name }}
         git checkout ${{ github.head_ref }}
 

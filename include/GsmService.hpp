@@ -1,59 +1,24 @@
 #pragma once
 
-#include <UartController.hpp>
+#include <esp_modem_config.h>
+
+#include <cxx_include/esp_modem_api.hpp>
+#include <cxx_include/esp_modem_dte.hpp>
 
 namespace gsm {
-using uart::UartController;
-using AtCommand = std::string;
-using Address = std::string;
-
-static constexpr auto defaultReadTimeout = pdMS_TO_TICKS(1000);
-
-enum class Result {
-    Ok,
-    Error,
-    Unknown,
-};
-
-bool operator!(Result result);
-
-struct Response {
-    std::string content;
-    Result type;
-};
-
-enum class NetworkStatus {
-    NotRegistered = 0,
-    RegisteredHome = 1,
-    Searching = 2,
-    RegistrationDenied = 3,
-    Unknown = 4,
-    RegisteredRoaming = 5,
-};
-
-class GsmController {
+class GsmService {
 public:
-    GsmController(UartController&& uart);
+    GsmService(const char* apn);
 
-    void loop();
+    std::unique_ptr<esp_modem::DCE> dce;
 
 private:
-    Result sendCommandGetResult(const AtCommand& command);
-    void sendAtCommand(const AtCommand& command);
-    void handleResponse(std::string& line);
+    void configure(const char* apn);
 
-    bool communicationReady();
-    bool moduleConnected();
-    bool networkConnected();
-    bool gprsConnected();
-
-    Address getLocalIp();
-    Result ping(const Address& host);
-    Result connectGprs();
-    Result setNetlightIndication(int value);
-
-    UartController& uart;
-    Response latestResponse;
+    std::shared_ptr<esp_modem::DTE> dte;
+    esp_modem_dce_config dceConfig;
+    esp_modem_dte_config dteConfig;
+    esp_netif_config netifConfig;
+    esp_netif_t* netif;
 };
-
 }  // namespace gsm
