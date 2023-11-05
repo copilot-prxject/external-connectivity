@@ -4,7 +4,7 @@
 
 #include <GsmService.hpp>
 #include <cxx_include/esp_modem_primitives.hpp>
-#include <list>
+#include <vector>
 
 namespace repl {
 using gsm::GsmService;
@@ -33,10 +33,8 @@ public:
     void registerCommands();
 
 private:
-    void registerCommand(esp_console_cmd_t command);
-
     static ModemConsole *console;
     static GsmService *gsmService;
-    std::list<esp_console_cmd_t> commands{};
+    std::vector<esp_console_cmd_t> commands;
 };
 }  // namespace repl
