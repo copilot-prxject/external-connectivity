@@ -9,9 +9,12 @@ using esp_modem::modem_mode;
 
 constexpr auto logTag = "repl";
 
-ModemConsole::ModemConsole(std::unique_ptr<GsmService> gsmService)
-    : gsmService{std::move(gsmService)},
-      commandRegistry{std::make_unique<CommandRegistry>(this, this->gsmService.get())} {
+ModemConsole *CommandRegistry::console{};
+GsmService *CommandRegistry::gsmService{};
+HttpClient *CommandRegistry::httpClient{};
+
+ModemConsole::ModemConsole(GsmService *gsmService, HttpClient *httpClient)
+    : commandRegistry{std::make_unique<CommandRegistry>(this, gsmService, httpClient)} {
     replConfig = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
     uartConfig = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
     ESP_ERROR_CHECK(esp_console_new_repl_uart(&uartConfig, &replConfig, &repl));
@@ -27,9 +30,10 @@ void ModemConsole::waitForExit() {
     repl->del(repl);
 }
 
-CommandRegistry::CommandRegistry(ModemConsole *console, GsmService *gsmService) {
+CommandRegistry::CommandRegistry(ModemConsole *console, GsmService *gsmService, HttpClient *httpClient) {
     CommandRegistry::console = console;
     CommandRegistry::gsmService = gsmService;
+    CommandRegistry::httpClient = httpClient;
 }
 
 void CommandRegistry::registerCommands() {
@@ -71,12 +75,27 @@ void CommandRegistry::registerCommands() {
              return ESP_OK;
          },
          nullptr},
+        {"get", "Performs a GET request", "<url>",
+         [](int argc, char **argv) {
+             if (argc != 2) {
+                 return ESP_ERR_INVALID_ARG;
+             }
+             httpClient->get(argv[1]);
+             return ESP_OK;
+         },
+         nullptr},
+        {"post", "Performs a POST request", "<url> <data>",
+         [](int argc, char **argv) {
+             if (argc != 3) {
+                 return ESP_ERR_INVALID_ARG;
+             }
+             httpClient->post(argv[1], argv[2]);
+             return ESP_OK;
+         },
+         nullptr},
     };
 
     std::for_each(commands.begin(), commands.end(),
                   [](auto &command) { ESP_ERROR_CHECK(esp_console_cmd_register(&command)); });
 }
-
-ModemConsole *CommandRegistry::console{};
-GsmService *CommandRegistry::gsmService{};
 }  // namespace repl
