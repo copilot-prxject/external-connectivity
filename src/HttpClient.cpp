@@ -39,12 +39,10 @@ esp_err_t handleHttpEvent(esp_http_client_event_t *event) {
     return ESP_OK;
 }
 
-HttpClient::HttpClient() {
-}
-
 esp_err_t HttpClient::get(std::string url) {
     esp_http_client_config_t config{
         .url = url.c_str(),
+        .method = HTTP_METHOD_GET,
         .event_handler = handleHttpEvent,
     };
     auto client = esp_http_client_init(&config);
@@ -56,12 +54,38 @@ esp_err_t HttpClient::get(std::string url) {
 
     auto contentLength = esp_http_client_get_content_length(client);
     auto statusCode = esp_http_client_get_status_code(client);
-    ESP_LOGI(logTag, "HTTP request completed, status code: %d, content length: %lld", statusCode, contentLength);
+    ESP_LOGI(logTag, "GET request completed, status code: %d, content length: %lld", statusCode, contentLength);
 
     return ESP_OK;
 }
 
-esp_err_t HttpClient::post(std::string url, std::string data) {
+esp_err_t HttpClient::post(std::string url, std::map<std::string, std::string> data) {
+    esp_http_client_config_t config{
+        .url = url.c_str(),
+        .method = HTTP_METHOD_POST,
+        .event_handler = handleHttpEvent,
+    };
+    std::string dataString{};
+    for (const auto &[key, value] : data) {
+        dataString += key + "=" + value + "&";
+    }
+    auto client = esp_http_client_init(&config);
+    auto result = esp_http_client_set_post_field(client, dataString.c_str(), dataString.size());
+    if (result != ESP_OK) {
+        ESP_LOGE(logTag, "Failed to set POST data: %s", esp_err_to_name(result));
+        return result;
+    }
+
+    result = esp_http_client_perform(client);
+    if (result != ESP_OK) {
+        ESP_LOGE(logTag, "Failed to perform HTTP request: %s", esp_err_to_name(result));
+        return result;
+    }
+
+    auto contentLength = esp_http_client_get_content_length(client);
+    auto statusCode = esp_http_client_get_status_code(client);
+    ESP_LOGI(logTag, "POST request completed, status code: %d, content length: %lld", statusCode, contentLength);
+
     return ESP_OK;
 }
 }  // namespace http

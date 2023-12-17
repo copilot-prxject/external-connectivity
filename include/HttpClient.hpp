@@ -2,15 +2,16 @@
 
 #include <esp_http_client.h>
 
+#include <map>
 #include <string>
 
 namespace http {
 class HttpClient {
 public:
-    HttpClient();
+    HttpClient() = default;
 
     esp_err_t get(std::string url);
-    esp_err_t post(std::string url, std::string data);
+    esp_err_t post(std::string url, std::map<std::string, std::string> data);
 
 private:
 };
