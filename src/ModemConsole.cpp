@@ -86,10 +86,27 @@ void CommandRegistry::registerCommands() {
          nullptr},
         {"post", "Performs a POST request", "<url> <data>",
          [](int argc, char **argv) {
-             if (argc != 3) {
+             if (argc < 3) {
                  return ESP_ERR_INVALID_ARG;
              }
-             httpClient->post(argv[1], argv[2]);
+             std::map<std::string, std::string> data;
+             for (int i = 2; i < argc; i++) {
+                 std::string arg{argv[i]};
+                 auto pos = arg.find('=');
+                 if (pos == std::string::npos) {
+                     return ESP_ERR_INVALID_ARG;
+                 }
+                 data[arg.substr(0, pos)] = arg.substr(pos + 1);
+             }
+             httpClient->post(argv[1], data);
+             return ESP_OK;
+         },
+         nullptr},
+        {"reset", "Resets the modem", nullptr,
+         [](int, char **) {
+             std::string output;
+             gsmService->dce->at("AT+CFUN=1,1", output, 500);
+             ESP_LOGI(logTag, "Modem reset");
              return ESP_OK;
          },
          nullptr},
