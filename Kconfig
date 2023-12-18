@@ -1,41 +1,70 @@
 menu "external-connectivity"
-    config EXT_CON_ENABLE_REPL
+    config EXT_CON_REPL_ENABLE
         bool "Enable console REPL"
         default n
         help
-            Enable console REPL (read-eval-print loop) for external connectivity.
+            Enable console REPL (read-eval-print loop).
             This allows you to interact with the device via a serial console.
-            This is useful for debugging and development.
-    config EXT_CON_APN
-        string "Access Point Name (APN)"
-        default "internet"
-        help
-            APN to use for external connectivity.
+            Useful for debugging and development.
     menu "UART Configuration"
         config EXT_CON_UART_PORT
             int "UART port"
             default 1
             help
-                UART port for external connectivity.
+                UART port.
         config EXT_CON_UART_RX_PIN
             int "UART RX pin"
             default 16
             help
-                UART RX pin to use for external connectivity.
+                UART RX pin to use.
         config EXT_CON_UART_TX_PIN
             int "UART TX pin"
             default 17
             help
-                UART TX pin to use for external connectivity.
+                UART TX pin to use.
         config EXT_CON_UART_RTS_PIN
             int "UART RTS pin"
             default 18
             help
-                UART RTS pin to use for external connectivity.
+                UART RTS pin to use.
         config EXT_CON_UART_CTS_PIN
             int "UART CTS pin"
             default 19
             help
-                UART CTS pin to use for external connectivity.
+                UART CTS pin to use.
+    endmenu
+    menu "GSM Configuration"
+            config EXT_CON_GSM_ENABLE
+                bool "Enable GSM"
+                default n
+                help
+                    Enable GSM.
+            config EXT_CON_APN
+                string "Access Point Name (APN)"
+                default "internet"
+                help
+                    APN to use.
+    endmenu
+    menu "LoRa Configuration"
+            config EXT_CON_LORA_ENABLE
+                bool "Enable LoRa"
+                default n
+                help
+                    Enable LoRa.
+            config EXT_CON_LORA_APP_EUI
+                string "TTN Application EUI"
+                default "?"
+                help
+                    Application EUI.
+            config EXT_CON_LORA_APP_KEY
+                string "TTN Application Key"
+                default "?"
+                help
+                    Application Key.
+            config EXT_CON_LORA_DEV_EUI
+                string "TTN Device EUI"
+                default "?"
+                help
+                    Device EUI.
     endmenu
 endmenu
