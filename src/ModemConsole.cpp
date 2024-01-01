@@ -129,6 +129,19 @@ void CommandRegistry::registerCommands() {
                  return ESP_OK;
              },
              nullptr},
+            {"init", "Initializes the modem", nullptr,
+             [](int, char **) {
+                 ESP_LOGI(logTag, "Initialized modem");
+                 loraService->init();
+                 return ESP_OK;
+             },
+             nullptr},
+            {"send", "Sends a message", nullptr,
+             [](int argc, char **argv) {
+                 loraService->send();
+                 return ESP_OK;
+             },
+             nullptr},
         };
         commands.insert(commands.cend(), loraCommands.begin(), loraCommands.end());
     }
