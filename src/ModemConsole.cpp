@@ -123,12 +123,6 @@ void CommandRegistry::registerCommands() {
 
     if (loraService) {
         std::vector<esp_console_cmd_t> loraCommands{
-            {"join", "Joins the network", nullptr,
-             [](int, char **) {
-                 ESP_LOGI(logTag, "Joined network");
-                 return ESP_OK;
-             },
-             nullptr},
             {"init", "Initializes the modem", nullptr,
              [](int, char **) {
                  ESP_LOGI(logTag, "Initialized modem");
@@ -138,7 +132,7 @@ void CommandRegistry::registerCommands() {
              nullptr},
             {"send", "Sends a message", nullptr,
              [](int argc, char **argv) {
-                 loraService->send();
+                 loraService->start();
                  return ESP_OK;
              },
              nullptr},

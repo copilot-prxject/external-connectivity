@@ -9,8 +9,9 @@ class LoraService {
 public:
     LoraService(std::string appEui, std::string appKey, std::string devEui);
 
-    void init();
-    void send();
+    bool init();
+    void start();
+    static void sendTask(void* pvParameter);
 
 private:
     const std::string appEui;
