@@ -1,8 +1,8 @@
-#include "ModemConsole.hpp"
-
 #include <magic_enum.hpp>
 #include <map>
 #include <numeric>
+
+#include "ModemConsole.hpp"
 
 namespace repl {
 using esp_modem::modem_mode;
@@ -130,12 +130,7 @@ void CommandRegistry::registerCommands() {
                  return ESP_OK;
              },
              nullptr},
-            {"send", "Sends a message", nullptr,
-             [](int argc, char **argv) {
-                 loraService->start();
-                 return ESP_OK;
-             },
-             nullptr},
+            {"send", "Sends a message", nullptr, [](int argc, char **argv) { return ESP_OK; }, nullptr},
         };
         commands.insert(commands.cend(), loraCommands.begin(), loraCommands.end());
     }
