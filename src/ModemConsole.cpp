@@ -1,8 +1,8 @@
+#include "ModemConsole.hpp"
+
 #include <magic_enum.hpp>
 #include <map>
 #include <numeric>
-
-#include "ModemConsole.hpp"
 
 namespace repl {
 using esp_modem::modem_mode;
@@ -14,11 +14,15 @@ GsmService *CommandRegistry::gsmService{};
 HttpClient *CommandRegistry::httpClient{};
 LoraService *CommandRegistry::loraService{};
 
-ModemConsole::ModemConsole(GsmService *gsmService, HttpClient *httpClient, LoraService *loraService)
-    : commandRegistry{std::make_unique<CommandRegistry>(this, gsmService, httpClient, loraService)} {
+ModemConsole::ModemConsole(GsmService *gsmService,
+                           HttpClient *httpClient,
+                           LoraService *loraService)
+    : commandRegistry{std::make_unique<CommandRegistry>(
+          this, gsmService, httpClient, loraService)} {
     replConfig = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
     uartConfig = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_console_new_repl_uart(&uartConfig, &replConfig, &repl));
+    ESP_ERROR_CHECK(
+        esp_console_new_repl_uart(&uartConfig, &replConfig, &repl));
 }
 
 void ModemConsole::start() {
@@ -31,7 +35,9 @@ void ModemConsole::waitForExit() {
     repl->del(repl);
 }
 
-CommandRegistry::CommandRegistry(ModemConsole *console, GsmService *gsmService, HttpClient *httpClient,
+CommandRegistry::CommandRegistry(ModemConsole *console,
+                                 GsmService *gsmService,
+                                 HttpClient *httpClient,
                                  LoraService *loraService) {
     CommandRegistry::console = console;
     CommandRegistry::gsmService = gsmService;
@@ -69,7 +75,8 @@ void CommandRegistry::registerCommands() {
              [](int, char **) {
                  int rssi, ber;
                  gsmService->dce->get_signal_quality(rssi, ber);
-                 ESP_LOGI(logTag, "Signal strength: %d, BER: %d", rssi, ber);
+                 ESP_LOGI(logTag, "Signal strength: %d, BER: %d", rssi,
+                          ber);
                  return ESP_OK;
              },
              nullptr},
@@ -77,8 +84,10 @@ void CommandRegistry::registerCommands() {
              [](int, char **) {
                  std::string operatorName;
                  int access;
-                 gsmService->dce->get_operator_name(operatorName, access);
-                 ESP_LOGI(logTag, "Operator name: %s, access: %d", operatorName.c_str(), access);
+                 gsmService->dce->get_operator_name(operatorName,
+                                                    access);
+                 ESP_LOGI(logTag, "Operator name: %s, access: %d",
+                          operatorName.c_str(), access);
                  return ESP_OK;
              },
              nullptr},
@@ -118,7 +127,8 @@ void CommandRegistry::registerCommands() {
              },
              nullptr},
         };
-        commands.insert(commands.cend(), gsmCommands.begin(), gsmCommands.end());
+        commands.insert(commands.cend(), gsmCommands.begin(),
+                        gsmCommands.end());
     }
 
     if (loraService) {
@@ -130,12 +140,15 @@ void CommandRegistry::registerCommands() {
                  return ESP_OK;
              },
              nullptr},
-            {"send", "Sends a message", nullptr, [](int argc, char **argv) { return ESP_OK; }, nullptr},
+            {"send", "Sends a message", nullptr,
+             [](int argc, char **argv) { return ESP_OK; }, nullptr},
         };
-        commands.insert(commands.cend(), loraCommands.begin(), loraCommands.end());
+        commands.insert(commands.cend(), loraCommands.begin(),
+                        loraCommands.end());
     }
 
-    std::for_each(commands.begin(), commands.end(),
-                  [](auto &command) { ESP_ERROR_CHECK(esp_console_cmd_register(&command)); });
+    std::for_each(commands.begin(), commands.end(), [](auto &command) {
+        ESP_ERROR_CHECK(esp_console_cmd_register(&command));
+    });
 }
 }  // namespace repl

@@ -1,3 +1,5 @@
+#include "BleService.hpp"
+
 #include <esp_log.h>
 #include <nimble/nimble_port.h>
 #include <nimble/nimble_port_freertos.h>
@@ -7,8 +9,6 @@
 
 #include <algorithm>
 #include <array>
-
-#include "BleService.hpp"
 
 namespace ble {
 constexpr auto logTag = "ble";
@@ -20,13 +20,18 @@ static uint16_t connectionHandle{};
 static std::array<std::string, characteristicCount> values{};
 static std::array<uint16_t, characteristicCount> valueHandles{};
 static std::array<ble_uuid128_t, characteristicCount> characteristicUuids{{
-    BLE_UUID128_INIT(0x61, 0x5D, 0x7D, 0xFB, 0xDD, 0x1A, 0x48, 0x0B, 0xAD, 0x99, 0x1E, 0xF9, 0x8F, 0x77, 0x69, 0x75),
-    BLE_UUID128_INIT(0x62, 0x5D, 0x7D, 0xFB, 0xDD, 0x1A, 0x48, 0x0B, 0xAD, 0x99, 0x1E, 0xF9, 0x8F, 0x77, 0x69, 0x75),
-    BLE_UUID128_INIT(0x63, 0x5D, 0x7D, 0xFB, 0xDD, 0x1A, 0x48, 0x0B, 0xAD, 0x99, 0x1E, 0xF9, 0x8F, 0x77, 0x69, 0x75),
-    BLE_UUID128_INIT(0x64, 0x5D, 0x7D, 0xFB, 0xDD, 0x1A, 0x48, 0x0B, 0xAD, 0x99, 0x1E, 0xF9, 0x8F, 0x77, 0x69, 0x75),
+    BLE_UUID128_INIT(0x61, 0x5D, 0x7D, 0xFB, 0xDD, 0x1A, 0x48, 0x0B, 0xAD, 0x99, 0x1E,
+                     0xF9, 0x8F, 0x77, 0x69, 0x75),
+    BLE_UUID128_INIT(0x62, 0x5D, 0x7D, 0xFB, 0xDD, 0x1A, 0x48, 0x0B, 0xAD, 0x99, 0x1E,
+                     0xF9, 0x8F, 0x77, 0x69, 0x75),
+    BLE_UUID128_INIT(0x63, 0x5D, 0x7D, 0xFB, 0xDD, 0x1A, 0x48, 0x0B, 0xAD, 0x99, 0x1E,
+                     0xF9, 0x8F, 0x77, 0x69, 0x75),
+    BLE_UUID128_INIT(0x64, 0x5D, 0x7D, 0xFB, 0xDD, 0x1A, 0x48, 0x0B, 0xAD, 0x99, 0x1E,
+                     0xF9, 0x8F, 0x77, 0x69, 0x75),
 }};
 static constexpr ble_uuid128_t serviceUuid =
-    BLE_UUID128_INIT(0x60, 0x5D, 0x7D, 0xFB, 0xDD, 0x1A, 0x48, 0x0B, 0xAD, 0x99, 0x1E, 0xF9, 0x8F, 0x77, 0x69, 0x75);
+    BLE_UUID128_INIT(0x60, 0x5D, 0x7D, 0xFB, 0xDD, 0x1A, 0x48, 0x0B, 0xAD, 0x99, 0x1E,
+                     0xF9, 0x8F, 0x77, 0x69, 0x75);
 static constexpr ble_gatt_svc_def bleGattServices[]{
     {
         .type = BLE_GATT_SVC_TYPE_PRIMARY,
@@ -69,13 +74,16 @@ void BleService::setValue(uint8_t index, const std::string &value) {
     ble_gatts_chr_updated(valueHandles[index]);
 }
 
-int BleService::onAccess(uint16_t conn_handle, uint16_t attr_handle, ble_gatt_access_ctxt *context, void *arg) {
-    const auto valueHandle = std::find(valueHandles.begin(), valueHandles.end(), attr_handle);
+int BleService::onAccess(uint16_t conn_handle, uint16_t attr_handle,
+                         ble_gatt_access_ctxt *context, void *arg) {
+    const auto valueHandle =
+        std::find(valueHandles.begin(), valueHandles.end(), attr_handle);
     const auto index = std::distance(valueHandles.begin(), valueHandle);
     switch (context->op) {
         case BLE_GATT_ACCESS_OP_READ_CHR:
             ESP_LOGI(logTag, "Read characteristic");
-            ESP_ERROR_CHECK(os_mbuf_append(context->om, values[index].data(), values[index].size()));
+            ESP_ERROR_CHECK(
+                os_mbuf_append(context->om, values[index].data(), values[index].size()));
             break;
         case BLE_GATT_ACCESS_OP_READ_DSC:
             ESP_LOGI(logTag, "Read descriptor");
@@ -107,16 +115,19 @@ void BleService::onRegister(ble_gatt_register_ctxt *context, void *arg) {
     switch (context->op) {
         case BLE_GATT_REGISTER_OP_SVC:
             ESP_LOGI(logTag, "Registered service %s with handle: %d",
-                     ble_uuid_to_str(context->svc.svc_def->uuid, buffer), context->svc.handle);
+                     ble_uuid_to_str(context->svc.svc_def->uuid, buffer),
+                     context->svc.handle);
             break;
         case BLE_GATT_REGISTER_OP_CHR:
-            ESP_LOGI(logTag, "Registered characteristic %s with def_handle: %d, val_handle: %d",
-                     ble_uuid_to_str(context->chr.chr_def->uuid, buffer), context->chr.def_handle,
-                     context->chr.val_handle);
+            ESP_LOGI(logTag,
+                     "Registered characteristic %s with def_handle: %d, val_handle: %d",
+                     ble_uuid_to_str(context->chr.chr_def->uuid, buffer),
+                     context->chr.def_handle, context->chr.val_handle);
             break;
         case BLE_GATT_REGISTER_OP_DSC:
             ESP_LOGI(logTag, "Registered descriptor %s with dsc_handle: %d",
-                     ble_uuid_to_str(context->dsc.dsc_def->uuid, buffer), context->dsc.handle);
+                     ble_uuid_to_str(context->dsc.dsc_def->uuid, buffer),
+                     context->dsc.handle);
             break;
     }
 }
@@ -159,7 +170,8 @@ void BleService::advertise() {
         .conn_mode = BLE_GAP_CONN_MODE_UND,
         .disc_mode = BLE_GAP_DISC_MODE_GEN,
     };
-    ESP_ERROR_CHECK(ble_gap_adv_start(deviceAddress, nullptr, BLE_HS_FOREVER, &advertisementParams, onEvent, nullptr));
+    ESP_ERROR_CHECK(ble_gap_adv_start(deviceAddress, nullptr, BLE_HS_FOREVER,
+                                      &advertisementParams, onEvent, nullptr));
 }
 
 BleService::BleService() {

@@ -17,7 +17,8 @@ class CommandRegistry;
 
 class ModemConsole {
 public:
-    ModemConsole(GsmService *gsmService, HttpClient *httpClient, LoraService *loraService);
+    ModemConsole(GsmService *gsmService, HttpClient *httpClient,
+                 LoraService *loraService);
     void start();
     void waitForExit();
 
@@ -32,7 +33,8 @@ private:
 
 class CommandRegistry {
 public:
-    CommandRegistry(ModemConsole *console, GsmService *gsmService, HttpClient *httpClient, LoraService *loraService);
+    CommandRegistry(ModemConsole *console, GsmService *gsmService,
+                    HttpClient *httpClient, LoraService *loraService);
     void registerCommands();
 
 private:

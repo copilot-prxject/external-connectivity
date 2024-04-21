@@ -17,7 +17,7 @@ void LoraService::loop(void* pvParameter) {
     loraServiceHandle->joinNetwork();
 
     while (true) {
-        uint8_t message[] = "Hello, world";
+        uint8_t message[] = "sample_type,sample_value";
         ESP_LOGI(logTag, "Sending message...");
         TTNResponseCode res = loraServiceHandle->ttn.transmitMessage(message, sizeof(message) - 1);
         ESP_LOGI(logTag, "%s", res == kTTNSuccessfulTransmission ? "Message sent." : "Transmission failed.");
@@ -27,10 +27,11 @@ void LoraService::loop(void* pvParameter) {
 }
 
 void LoraService::onDownlinkMessage(const uint8_t* message, size_t length, port_t port) {
-    std::string messageString{};
-    for (int i = 0; i < length; ++i) {
-        messageString += std::to_string(message[i]);
+    if (length == 0) {
+        ESP_LOGI(logTag, "Empty message received.");
+        return;
     }
+    std::string messageString{reinterpret_cast<const char*>(message), length};
     ESP_LOGI(logTag, "Message received: \"%s\", length: %d, port: %d", messageString.c_str(), length, port);
     ble::BleService::setValue(port - 1, messageString);
 }
@@ -50,12 +51,17 @@ bool LoraService::init() {
     ttn.provision(devEui.c_str(), appEui.c_str(), appKey.c_str());
     ttn.onMessage(onDownlinkMessage);
 
+    ESP_LOGI(logTag, "LoRa service initialized.");
     return true;
 }
 
-void LoraService::start(uint32_t stackDepth) {
+void LoraService::start(bool asTask, uint32_t stackDepth) {
     ESP_LOGI(logTag, "LoRa service started.");
-    xTaskCreate(loop, "loraLoop", stackDepth, this, 1, nullptr);
+    if (!asTask) {
+        loop(this);
+        return;
+    }
+    xTaskCreate(loop, "loraLoop", stackDepth, static_cast<void*>(this), 1, nullptr);
 }
 
 void LoraService::joinNetwork() {
@@ -65,5 +71,6 @@ void LoraService::joinNetwork() {
         vTaskDelay(30 * pdMS_TO_TICKS(1000));
         success = ttn.join();
     }
+    ESP_LOGI(logTag, "Joined network.");
 }
 }  // namespace lora

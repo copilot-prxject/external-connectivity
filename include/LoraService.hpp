@@ -12,7 +12,7 @@ public:
 
     LoraService(std::string appEui, std::string appKey, std::string devEui);
     bool init();
-    void start(uint32_t stackDepth);
+    void start(bool asTask, uint32_t stackDepth);
     void joinNetwork();
 
 private:
