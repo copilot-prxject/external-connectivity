@@ -12,12 +12,17 @@ constexpr auto logTag = "repl";
 ModemConsole *CommandRegistry::console{};
 GsmService *CommandRegistry::gsmService{};
 HttpClient *CommandRegistry::httpClient{};
+LoraService *CommandRegistry::loraService{};
 
-ModemConsole::ModemConsole(GsmService *gsmService, HttpClient *httpClient)
-    : commandRegistry{std::make_unique<CommandRegistry>(this, gsmService, httpClient)} {
+ModemConsole::ModemConsole(GsmService *gsmService,
+                           HttpClient *httpClient,
+                           LoraService *loraService)
+    : commandRegistry{std::make_unique<CommandRegistry>(
+          this, gsmService, httpClient, loraService)} {
     replConfig = ESP_CONSOLE_REPL_CONFIG_DEFAULT();
     uartConfig = ESP_CONSOLE_DEV_UART_CONFIG_DEFAULT();
-    ESP_ERROR_CHECK(esp_console_new_repl_uart(&uartConfig, &replConfig, &repl));
+    ESP_ERROR_CHECK(
+        esp_console_new_repl_uart(&uartConfig, &replConfig, &repl));
 }
 
 void ModemConsole::start() {
@@ -30,10 +35,14 @@ void ModemConsole::waitForExit() {
     repl->del(repl);
 }
 
-CommandRegistry::CommandRegistry(ModemConsole *console, GsmService *gsmService, HttpClient *httpClient) {
+CommandRegistry::CommandRegistry(ModemConsole *console,
+                                 GsmService *gsmService,
+                                 HttpClient *httpClient,
+                                 LoraService *loraService) {
     CommandRegistry::console = console;
     CommandRegistry::gsmService = gsmService;
     CommandRegistry::httpClient = httpClient;
+    CommandRegistry::loraService = loraService;
 }
 
 void CommandRegistry::registerCommands() {
@@ -44,75 +53,102 @@ void CommandRegistry::registerCommands() {
              return ESP_OK;
          },
          nullptr},
-        {"mode", "Sets the modem mode", "<PPP|CMD>",
-         [](int argc, char **argv) {
-             std::map<std::string, modem_mode> mode{
-                 {"PPP", modem_mode::DATA_MODE},
-                 {"CMD", modem_mode::COMMAND_MODE},
-             };
-             if (argc != 2 || !mode.contains(argv[1])) {
-                 return ESP_ERR_INVALID_ARG;
-             }
-             gsmService->dce->set_mode(mode[argv[1]]);
-             ESP_LOGI(logTag, "Modem mode set to %s", argv[1]);
-             return ESP_OK;
-         },
-         nullptr},
-        {"signal", "Gets the signal strength", nullptr,
-         [](int, char **) {
-             int rssi, ber;
-             gsmService->dce->get_signal_quality(rssi, ber);
-             ESP_LOGI(logTag, "Signal strength: %d, BER: %d", rssi, ber);
-             return ESP_OK;
-         },
-         nullptr},
-        {"operator", "Gets the operator name", nullptr,
-         [](int, char **) {
-             std::string operatorName;
-             int access;
-             gsmService->dce->get_operator_name(operatorName, access);
-             ESP_LOGI(logTag, "Operator name: %s, access: %d", operatorName.c_str(), access);
-             return ESP_OK;
-         },
-         nullptr},
-        {"get", "Performs a GET request", "<url>",
-         [](int argc, char **argv) {
-             if (argc != 2) {
-                 return ESP_ERR_INVALID_ARG;
-             }
-             httpClient->get(argv[1]);
-             return ESP_OK;
-         },
-         nullptr},
-        {"post", "Performs a POST request", "<url> <data>",
-         [](int argc, char **argv) {
-             if (argc < 3) {
-                 return ESP_ERR_INVALID_ARG;
-             }
-             std::map<std::string, std::string> data;
-             for (int i = 2; i < argc; i++) {
-                 std::string arg{argv[i]};
-                 auto pos = arg.find('=');
-                 if (pos == std::string::npos) {
-                     return ESP_ERR_INVALID_ARG;
-                 }
-                 data[arg.substr(0, pos)] = arg.substr(pos + 1);
-             }
-             httpClient->post(argv[1], data);
-             return ESP_OK;
-         },
-         nullptr},
-        {"reset", "Resets the modem", nullptr,
-         [](int, char **) {
-             std::string output;
-             gsmService->dce->at("AT+CFUN=1,1", output, 500);
-             ESP_LOGI(logTag, "Modem reset");
-             return ESP_OK;
-         },
-         nullptr},
     };
 
-    std::for_each(commands.begin(), commands.end(),
-                  [](auto &command) { ESP_ERROR_CHECK(esp_console_cmd_register(&command)); });
+    if (gsmService && httpClient) {
+        std::vector<esp_console_cmd_t> gsmCommands{
+            {"mode", "Sets the modem mode", "<PPP|CMD>",
+             [](int argc, char **argv) {
+                 std::map<std::string, modem_mode> mode{
+                     {"PPP", modem_mode::DATA_MODE},
+                     {"CMD", modem_mode::COMMAND_MODE},
+                 };
+                 if (argc != 2 || !mode.contains(argv[1])) {
+                     return ESP_ERR_INVALID_ARG;
+                 }
+                 gsmService->dce->set_mode(mode[argv[1]]);
+                 ESP_LOGI(logTag, "Modem mode set to %s", argv[1]);
+                 return ESP_OK;
+             },
+             nullptr},
+            {"signal", "Gets the signal strength", nullptr,
+             [](int, char **) {
+                 int rssi, ber;
+                 gsmService->dce->get_signal_quality(rssi, ber);
+                 ESP_LOGI(logTag, "Signal strength: %d, BER: %d", rssi,
+                          ber);
+                 return ESP_OK;
+             },
+             nullptr},
+            {"operator", "Gets the operator name", nullptr,
+             [](int, char **) {
+                 std::string operatorName;
+                 int access;
+                 gsmService->dce->get_operator_name(operatorName,
+                                                    access);
+                 ESP_LOGI(logTag, "Operator name: %s, access: %d",
+                          operatorName.c_str(), access);
+                 return ESP_OK;
+             },
+             nullptr},
+            {"get", "Performs a GET request", "<url>",
+             [](int argc, char **argv) {
+                 if (argc != 2) {
+                     return ESP_ERR_INVALID_ARG;
+                 }
+                 httpClient->get(argv[1]);
+                 return ESP_OK;
+             },
+             nullptr},
+            {"post", "Performs a POST request", "<url> <data>",
+             [](int argc, char **argv) {
+                 if (argc < 3) {
+                     return ESP_ERR_INVALID_ARG;
+                 }
+                 std::map<std::string, std::string> data;
+                 for (int i = 2; i < argc; i++) {
+                     std::string arg{argv[i]};
+                     auto pos = arg.find('=');
+                     if (pos == std::string::npos) {
+                         return ESP_ERR_INVALID_ARG;
+                     }
+                     data[arg.substr(0, pos)] = arg.substr(pos + 1);
+                 }
+                 httpClient->post(argv[1], data);
+                 return ESP_OK;
+             },
+             nullptr},
+            {"reset", "Resets the modem", nullptr,
+             [](int, char **) {
+                 std::string output;
+                 gsmService->dce->at("AT+CFUN=1,1", output, 500);
+                 ESP_LOGI(logTag, "Modem reset");
+                 return ESP_OK;
+             },
+             nullptr},
+        };
+        commands.insert(commands.cend(), gsmCommands.begin(),
+                        gsmCommands.end());
+    }
+
+    if (loraService) {
+        std::vector<esp_console_cmd_t> loraCommands{
+            {"init", "Initializes the modem", nullptr,
+             [](int, char **) {
+                 ESP_LOGI(logTag, "Initialized modem");
+                 loraService->init();
+                 return ESP_OK;
+             },
+             nullptr},
+            {"send", "Sends a message", nullptr,
+             [](int argc, char **argv) { return ESP_OK; }, nullptr},
+        };
+        commands.insert(commands.cend(), loraCommands.begin(),
+                        loraCommands.end());
+    }
+
+    std::for_each(commands.begin(), commands.end(), [](auto &command) {
+        ESP_ERROR_CHECK(esp_console_cmd_register(&command));
+    });
 }
 }  // namespace repl

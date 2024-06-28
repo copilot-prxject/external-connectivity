@@ -6,6 +6,7 @@
 #include <cxx_include/esp_modem_dte.hpp>
 
 namespace gsm {
+
 class GsmService {
 public:
     GsmService(const char* apn);
@@ -21,4 +22,5 @@ private:
     esp_netif_config netifConfig;
     esp_netif_t* netif;
 };
+
 }  // namespace gsm
