@@ -11,7 +11,6 @@
 #include <ModemConsole.hpp>
 
 constexpr auto logTag = "main";
-constexpr uint32_t taskStackDepth = 4096;
 
 std::unique_ptr<gsm::GsmService> gsmService;
 std::unique_ptr<http::HttpClient> httpClient;

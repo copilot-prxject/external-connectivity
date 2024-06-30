@@ -33,7 +33,8 @@ esp_err_t handleHttpEvent(esp_http_client_event_t *event) {
             ESP_LOGD(logTag, "HTTP_EVENT_DISCONNECTED");
             break;
         default:
-            ESP_LOGD(logTag, "Unhandled event %s", magic_enum::enum_name(event->event_id).data());
+            ESP_LOGD(logTag, "Unhandled event %s",
+                     magic_enum::enum_name(event->event_id).data());
             break;
     }
     return ESP_OK;
@@ -54,7 +55,8 @@ esp_err_t HttpClient::get(std::string url) {
 
     auto contentLength = esp_http_client_get_content_length(client);
     auto statusCode = esp_http_client_get_status_code(client);
-    ESP_LOGI(logTag, "GET request completed, status code: %d, content length: %lld", statusCode, contentLength);
+    ESP_LOGI(logTag, "GET request completed, status code: %d, content length: %lld",
+             statusCode, contentLength);
 
     return ESP_OK;
 }
@@ -70,7 +72,8 @@ esp_err_t HttpClient::post(std::string url, std::map<std::string, std::string> d
         dataString += key + "=" + value + "&";
     }
     auto client = esp_http_client_init(&config);
-    auto result = esp_http_client_set_post_field(client, dataString.c_str(), dataString.size());
+    auto result =
+        esp_http_client_set_post_field(client, dataString.c_str(), dataString.size());
     if (result != ESP_OK) {
         ESP_LOGE(logTag, "Failed to set POST data: %s", esp_err_to_name(result));
         return result;
@@ -84,7 +87,8 @@ esp_err_t HttpClient::post(std::string url, std::map<std::string, std::string> d
 
     auto contentLength = esp_http_client_get_content_length(client);
     auto statusCode = esp_http_client_get_status_code(client);
-    ESP_LOGI(logTag, "POST request completed, status code: %d, content length: %lld", statusCode, contentLength);
+    ESP_LOGI(logTag, "POST request completed, status code: %d, content length: %lld",
+             statusCode, contentLength);
 
     return ESP_OK;
 }

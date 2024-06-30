@@ -174,8 +174,7 @@ void BleService::advertise() {
                                       &advertisementParams, onEvent, nullptr));
 }
 
-BleService::BleService() {
-}
+BleService::BleService() {}
 
 bool BleService::init() {
     ESP_ERROR_CHECK(nimble_port_init());
