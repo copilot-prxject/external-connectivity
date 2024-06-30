@@ -1,19 +1,9 @@
-file(GLOB_RECURSE SOURCES "src/*.c" "src/*.cpp")
+cmake_minimum_required(VERSION 3.16)
 
-set(DEPENDENCIES
-    "bt"
-    "console"
-    "esp_http_client"
-    "esp_modem"
-    "fmt"
-    "nvs_flash"
-    "ttn-esp32")
+include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+include(FetchContent)
 
-idf_component_register(
-    SRCS         ${SOURCES}
-    INCLUDE_DIRS "include"
-    REQUIRES     ${DEPENDENCIES}
-)
+project(external-connectivity)
 
-target_compile_options(${COMPONENT_LIB} PRIVATE -Wno-missing-field-initializers)
-target_link_libraries(${COMPONENT_LIB} magic_enum)
+FetchContent_Declare(magic_enum GIT_REPOSITORY https://github.com/Neargye/magic_enum.git)
+FetchContent_MakeAvailable(magic_enum)

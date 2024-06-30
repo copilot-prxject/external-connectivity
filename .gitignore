@@ -1,6 +1,5 @@
-# Directories
+.cache/
 build/
+managed_components/
 
-# Files
-dependencies.lock
 sdkconfig

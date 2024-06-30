@@ -1,0 +1,6 @@
+## IDF Component Manager Manifest File
+dependencies:
+  espressif/esp_modem: "^1.0.3"
+  espressif/fmt: "^10.1.0~1"
+  idf:
+    version: ">=4.1.0"

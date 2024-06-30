@@ -1,0 +1,21 @@
+name: Build project
+
+on:
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - name: Clone copilot
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.COPILOT_TOKEN }}
+        submodules: recursive
+
+    - name: Build with ESP-IDF
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: v5.3
+        target: esp32
