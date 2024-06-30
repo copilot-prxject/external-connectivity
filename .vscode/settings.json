@@ -1,12 +1,15 @@
 {
-    // python idf_tools.py install esp-clang
-    "clangd.path": "${userHome}\\.espressif\\tools\\esp-clang\\esp-17.0.1_20240419\\esp-clang\\bin\\clangd.exe",
+    "C_Cpp.intelliSenseEngine": "disabled",
+    "[cpp]": {
+        "editor.defaultFormatter": "llvm-vs-code-extensions.vscode-clangd"
+    },
     "clangd.arguments": [
         "--background-index",
         "--clang-tidy",
         "--cross-file-rename",
         "--header-insertion=iwyu",
         "--query-driver=**",
-        "--suggest-missing-includes",
+        "--suggest-missing-includes"
     ],
+    "clangd.path": "${userHome}\\.espressif\\tools\\esp-clang\\esp-17.0.1_20240419\\esp-clang\\bin\\clangd.exe"
 }
