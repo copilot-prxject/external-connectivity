@@ -1,5 +1,6 @@
 #include "BleService.hpp"
 
+#include <copilot/BleConsts.h>
 #include <esp_log.h>
 #include <nimble/nimble_port.h>
 #include <nimble/nimble_port_freertos.h>
@@ -11,6 +12,7 @@
 #include <array>
 
 namespace ble {
+
 constexpr auto logTag = "ble";
 constexpr auto deviceName = "esp32-copilot-ext-con";
 constexpr size_t characteristicCount{4};

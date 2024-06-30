@@ -3,6 +3,7 @@ file(GLOB_RECURSE SOURCES "src/*.c" "src/*.cpp")
 set(DEPENDENCIES
     "bt"
     "console"
+    "copilot-configs"
     "esp_http_client"
     "esp_modem"
     "fmt"
