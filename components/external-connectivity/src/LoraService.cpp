@@ -59,12 +59,13 @@ bool LoraService::init() {
     return true;
 }
 
-void LoraService::start(bool asTask, uint32_t stackDepth) {
+void LoraService::start(bool asTask) {
     ESP_LOGI(logTag, "LoRa service started.");
     if (!asTask) {
         loop(this);
         return;
     }
+    constexpr uint32_t stackDepth{4096};
     xTaskCreate(loop, "loraLoop", stackDepth, static_cast<void*>(this), 1, nullptr);
 }
 

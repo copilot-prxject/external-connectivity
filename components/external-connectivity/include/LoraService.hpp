@@ -7,12 +7,12 @@
 namespace lora {
 class LoraService {
 public:
-    static void loop(void* parameters);
-    static void onDownlinkMessage(const uint8_t* message, size_t length, port_t port);
+    static void loop(void *parameters);
+    static void onDownlinkMessage(const uint8_t *message, size_t length, port_t port);
 
     LoraService(std::string appEui, std::string appKey, std::string devEui);
     bool init();
-    void start(bool asTask, uint32_t stackDepth);
+    void start(bool asTask);
     void joinNetwork();
 
 private:

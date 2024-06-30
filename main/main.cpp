@@ -45,7 +45,7 @@ extern "C" void app_main(void) {
 #ifdef CONFIG_EXT_CON_REPL_ENABLE
     launchAsTask = true;
 #endif
-    loraService->start(taskStackDepth, launchAsTask);
+    loraService->start(launchAsTask);
 #endif
 
 #ifdef CONFIG_EXT_CON_REPL_ENABLE
