@@ -7,37 +7,52 @@
 #include <BleService.hpp>
 
 namespace lora {
+
 constexpr auto logTag = "lora";
+
+bool LoraService::networkJoined = false;
+std::queue<std::string> LoraService::uplinkQueue;
 
 void LoraService::loop(void* pvParameter) {
     LoraService* loraServiceHandle = static_cast<LoraService*>(pvParameter);
     assert(loraServiceHandle != nullptr);
 
-    ESP_LOGI(logTag, "Joining network...");
     loraServiceHandle->joinNetwork();
 
     while (true) {
-        uint8_t message[] = "sample_type,sample_value";
-        ESP_LOGI(logTag, "Sending message...");
-        TTNResponseCode res =
-            loraServiceHandle->ttn.transmitMessage(message, sizeof(message) - 1);
-        ESP_LOGI(logTag, "%s",
-                 res == kTTNSuccessfulTransmission ? "Message sent."
-                                                   : "Transmission failed.");
+        if (!uplinkQueue.empty()) {
+            std::string message{uplinkQueue.front()};
+            ESP_LOGI(logTag, "Sending uplink message: \"%s\"", message.c_str());
 
-        vTaskDelay(30 * pdMS_TO_TICKS(1000));
+            TTNResponseCode result{loraServiceHandle->ttn.transmitMessage(
+                reinterpret_cast<const uint8_t*>(message.c_str()), message.length())};
+            ESP_LOGI(logTag, "%s",
+                     result == kTTNSuccessfulTransmission ? "Message sent"
+                                                          : "Transmission failed");
+            uplinkQueue.pop();
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
 
 void LoraService::onDownlinkMessage(const uint8_t* message, size_t length, port_t port) {
     if (length == 0) {
-        ESP_LOGI(logTag, "Empty message received.");
+        ESP_LOGI(logTag, "Empty message received");
         return;
     }
     std::string messageString{reinterpret_cast<const char*>(message), length};
     ESP_LOGI(logTag, "Message received: \"%s\", length: %d, port: %d",
              messageString.c_str(), length, port);
     ble::BleService::setValue(port - 1, messageString);
+}
+
+void LoraService::sendUplinkMessage(const std::string& message) {
+    if (!networkJoined) {
+        ESP_LOGE(logTag, "Network not joined yet, cannot send the message");
+        return;
+    }
+    uplinkQueue.push(message);
 }
 
 LoraService::LoraService(std::string appEui, std::string appKey, std::string devEui)
@@ -55,12 +70,12 @@ bool LoraService::init() {
     ttn.provision(devEui.c_str(), appEui.c_str(), appKey.c_str());
     ttn.onMessage(onDownlinkMessage);
 
-    ESP_LOGI(logTag, "LoRa service initialized.");
+    ESP_LOGI(logTag, "LoRa service initialized");
     return true;
 }
 
 void LoraService::start(bool asTask) {
-    ESP_LOGI(logTag, "LoRa service started.");
+    ESP_LOGI(logTag, "LoRa service started");
     if (!asTask) {
         loop(this);
         return;
@@ -70,12 +85,15 @@ void LoraService::start(bool asTask) {
 }
 
 void LoraService::joinNetwork() {
+    ESP_LOGI(logTag, "Joining network");
     bool success = ttn.join();
     while (!success) {
-        ESP_LOGE(logTag, "Join failed, retrying in 30 seconds...");
+        ESP_LOGE(logTag, "Join failed, retrying in 30 seconds");
         vTaskDelay(30 * pdMS_TO_TICKS(1000));
         success = ttn.join();
     }
-    ESP_LOGI(logTag, "Joined network.");
+    networkJoined = true;
+    ESP_LOGI(logTag, "Network joined successfully");
 }
+
 }  // namespace lora
