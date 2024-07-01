@@ -2,67 +2,67 @@
 
 #include <copilot/BleConsts.h>
 #include <esp_log.h>
+#include <host/ble_gatt.h>
+#include <host/ble_uuid.h>
 #include <nimble/nimble_port.h>
 #include <nimble/nimble_port_freertos.h>
 #include <services/ans/ble_svc_ans.h>
 #include <services/gap/ble_svc_gap.h>
 #include <services/gatt/ble_svc_gatt.h>
 
-#include <algorithm>
-#include <array>
+#include "host/ble_hs_mbuf.h"
+#include "os/os_mbuf.h"
 
 namespace ble {
 
 constexpr auto logTag = "ble";
 constexpr auto deviceName = "esp32-copilot-ext-con";
-constexpr size_t characteristicCount{4};
 
 static uint8_t deviceAddress{};
 static uint16_t connectionHandle{};
-static std::array<std::string, characteristicCount> values{};
-static std::array<uint16_t, characteristicCount> valueHandles{};
-static std::array<ble_uuid128_t, characteristicCount> characteristicUuids{{
-    BLE_UUID128_INIT(0x61, 0x5D, 0x7D, 0xFB, 0xDD, 0x1A, 0x48, 0x0B, 0xAD, 0x99, 0x1E,
-                     0xF9, 0x8F, 0x77, 0x69, 0x75),
-    BLE_UUID128_INIT(0x62, 0x5D, 0x7D, 0xFB, 0xDD, 0x1A, 0x48, 0x0B, 0xAD, 0x99, 0x1E,
-                     0xF9, 0x8F, 0x77, 0x69, 0x75),
-    BLE_UUID128_INIT(0x63, 0x5D, 0x7D, 0xFB, 0xDD, 0x1A, 0x48, 0x0B, 0xAD, 0x99, 0x1E,
-                     0xF9, 0x8F, 0x77, 0x69, 0x75),
-    BLE_UUID128_INIT(0x64, 0x5D, 0x7D, 0xFB, 0xDD, 0x1A, 0x48, 0x0B, 0xAD, 0x99, 0x1E,
-                     0xF9, 0x8F, 0x77, 0x69, 0x75),
-}};
-static constexpr ble_uuid128_t serviceUuid =
-    BLE_UUID128_INIT(0x60, 0x5D, 0x7D, 0xFB, 0xDD, 0x1A, 0x48, 0x0B, 0xAD, 0x99, 0x1E,
-                     0xF9, 0x8F, 0x77, 0x69, 0x75);
-static constexpr ble_gatt_svc_def bleGattServices[]{
+static char charValue[64]{""};
+static uint16_t valueHandles[3]{0};
+static const ble_uuid16_t serviceUuid = BLE_UUID16_INIT(0x5100);
+static const ble_uuid16_t serviceUuid2 = BLE_UUID16_INIT(0x5000);
+static const ble_uuid16_t serviceUuids[2]{serviceUuid, serviceUuid2};
+static const ble_uuid16_t characteristicUuid = BLE_UUID16_INIT(0x5101);
+static const ble_uuid16_t characteristicUuid2 = BLE_UUID16_INIT(0x5102);
+static const ble_uuid16_t characteristicUuid3 = BLE_UUID16_INIT(0x5001);
+
+static const ble_gatt_svc_def bleGattServices[]{
+    {
+        .type = BLE_GATT_SVC_TYPE_PRIMARY,
+        .uuid = &serviceUuid2.u,
+        .characteristics =
+            (ble_gatt_chr_def[]){
+                {
+                    .uuid = (ble_uuid_t *)&characteristicUuid3,
+                    .access_cb = BleService::onAccess,
+                    .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY |
+                             BLE_GATT_CHR_F_READ,
+                    .val_handle = &valueHandles[0],
+                },
+                {0},
+            },
+    },
     {
         .type = BLE_GATT_SVC_TYPE_PRIMARY,
         .uuid = &serviceUuid.u,
         .characteristics =
             (ble_gatt_chr_def[]){
                 {
-                    .uuid = &characteristicUuids[0].u,
+                    .uuid = (ble_uuid_t *)&characteristicUuid,
                     .access_cb = BleService::onAccess,
-                    .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
-                    .val_handle = &valueHandles[0],
-                },
-                {
-                    .uuid = &characteristicUuids[1].u,
-                    .access_cb = BleService::onAccess,
-                    .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
+                    .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY |
+                             BLE_GATT_CHR_F_READ,
                     .val_handle = &valueHandles[1],
                 },
                 {
-                    .uuid = &characteristicUuids[2].u,
+                    .uuid = (ble_uuid_t *)&characteristicUuid2,
                     .access_cb = BleService::onAccess,
-                    .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
+                    .flags = BLE_GATT_CHR_F_WRITE | BLE_GATT_CHR_F_NOTIFY |
+                             BLE_GATT_CHR_F_READ,
                     .val_handle = &valueHandles[2],
-                },
-                {
-                    .uuid = &characteristicUuids[3].u,
-                    .access_cb = BleService::onAccess,
-                    .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_NOTIFY,
-                    .val_handle = &valueHandles[3],
                 },
                 {0},
             },
@@ -70,31 +70,38 @@ static constexpr ble_gatt_svc_def bleGattServices[]{
     {0},
 };
 
-void BleService::setValue(uint8_t index, const std::string &value) {
-    ESP_LOGI(logTag, "Setting value for characteristic %d: %s", index, value.c_str());
-    values[index] = value;
-    ble_gatts_chr_updated(valueHandles[index]);
-}
-
 int BleService::onAccess(uint16_t conn_handle, uint16_t attr_handle,
                          ble_gatt_access_ctxt *context, void *arg) {
-    const auto valueHandle =
-        std::find(valueHandles.begin(), valueHandles.end(), attr_handle);
-    const auto index = std::distance(valueHandles.begin(), valueHandle);
+    int result{0};
     switch (context->op) {
         case BLE_GATT_ACCESS_OP_READ_CHR:
             ESP_LOGI(logTag, "Read characteristic");
-            ESP_ERROR_CHECK(
-                os_mbuf_append(context->om, values[index].data(), values[index].size()));
+            ESP_ERROR_CHECK(os_mbuf_append(context->om, charValue, strlen(charValue)));
             break;
-        case BLE_GATT_ACCESS_OP_READ_DSC:
-            ESP_LOGI(logTag, "Read descriptor");
+        case BLE_GATT_ACCESS_OP_WRITE_CHR:
+            ESP_LOGI(logTag, "Write characteristic");
+            ESP_LOGI(logTag, "UUID type: %d", context->chr->uuid->type);
+            ESP_LOGI(logTag, "UUID value: %d",
+                     ((ble_uuid16_t *)context->chr->uuid)->value);
+
+            uint16_t omLen;
+            omLen = OS_MBUF_PKTLEN(context->om);
+
+            result =
+                ble_hs_mbuf_to_flat(context->om, &charValue, sizeof(charValue), &omLen);
+            charValue[omLen] = '\0';
+
+            if (result != 0) {
+                ESP_LOGE(logTag, "Failed to write characteristic, result: %d", result);
+            }
+
+            ble_gatts_chr_updated(attr_handle);
             break;
         default:
             ESP_LOGI(logTag, "Unknown operation %d", context->op);
             break;
     }
-    return 0;
+    return result;
 }
 
 void BleService::loop(void *) {
@@ -126,11 +133,6 @@ void BleService::onRegister(ble_gatt_register_ctxt *context, void *arg) {
                      ble_uuid_to_str(context->chr.chr_def->uuid, buffer),
                      context->chr.def_handle, context->chr.val_handle);
             break;
-        case BLE_GATT_REGISTER_OP_DSC:
-            ESP_LOGI(logTag, "Registered descriptor %s with dsc_handle: %d",
-                     ble_uuid_to_str(context->dsc.dsc_def->uuid, buffer),
-                     context->dsc.handle);
-            break;
     }
 }
 
@@ -149,6 +151,10 @@ int BleService::onEvent(ble_gap_event *event, void *arg) {
             connectionHandle = 0;
             advertise();
             break;
+        case BLE_GAP_EVENT_SUBSCRIBE:
+            ESP_LOGI(logTag, "Subscribe");
+            ble_gatts_notify(connectionHandle, valueHandles[0]);
+            break;
         default:
             ESP_LOGI(logTag, "Unknown event %d", event->type);
             break;
@@ -157,16 +163,20 @@ int BleService::onEvent(ble_gap_event *event, void *arg) {
 }
 
 void BleService::advertise() {
-    const auto deviceName = ble_svc_gap_device_name();
     ble_hs_adv_fields fields{
         .flags = BLE_HS_ADV_F_DISC_GEN | BLE_HS_ADV_F_BREDR_UNSUP,
-        .name = reinterpret_cast<const uint8_t *>(deviceName),
-        .name_len = static_cast<uint8_t>(strlen(deviceName)),
-        .name_is_complete = 1,
+        .uuids16 = serviceUuids,
+        .num_uuids16 = 2,
+        .uuids16_is_complete = 1,
         .tx_pwr_lvl = BLE_HS_ADV_TX_PWR_LVL_AUTO,
         .tx_pwr_lvl_is_present = 1,
     };
-    ESP_ERROR_CHECK(ble_gap_adv_set_fields(&fields));
+
+    int result{ble_gap_adv_set_fields(&fields)};
+    if (result != 0) {
+        ESP_LOGE(logTag, "Failed to set advertisement fields, result: %d", result);
+        return;
+    }
 
     ble_gap_adv_params advertisementParams = {
         .conn_mode = BLE_GAP_CONN_MODE_UND,
@@ -175,8 +185,6 @@ void BleService::advertise() {
     ESP_ERROR_CHECK(ble_gap_adv_start(deviceAddress, nullptr, BLE_HS_FOREVER,
                                       &advertisementParams, onEvent, nullptr));
 }
-
-BleService::BleService() {}
 
 bool BleService::init() {
     ESP_ERROR_CHECK(nimble_port_init());

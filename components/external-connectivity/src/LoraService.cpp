@@ -37,7 +37,7 @@ void LoraService::onDownlinkMessage(const uint8_t* message, size_t length, port_
     std::string messageString{reinterpret_cast<const char*>(message), length};
     ESP_LOGI(logTag, "Message received: \"%s\", length: %d, port: %d",
              messageString.c_str(), length, port);
-    ble::BleService::setValue(port - 1, messageString);
+    // ble::BleService::setValue(port - 1, messageString);
 }
 
 LoraService::LoraService(std::string appEui, std::string appKey, std::string devEui)
