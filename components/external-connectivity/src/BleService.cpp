@@ -46,15 +46,15 @@ const auto targetAddress{[] {
     return address;
 }()};
 
-const auto targetService{GATT_SVC_CONTROL_MEASUREMENT_MODULE};
-// const auto targetService{0x5100};
+// const auto targetService{GATT_SVC_CONTROL_MEASUREMENT_MODULE};
+const auto targetService{0x5100};
 const std::array targetServices{
     // GATT_SVC_OBD_MODULE,
     GATT_SVC_CONTROL_MEASUREMENT_MODULE,
 };
 
-const auto targetUuid{GATT_CHR_TEMPERATURE_CONTROL};
-// const auto targetUuid{0x5101};
+// const auto targetUuid{GATT_CHR_TEMPERATURE_CONTROL};
+const auto targetUuid{0x5101};
 
 std::string to_string(const ble_addr_t &address) {
     return std::format("{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}", address.val[5],
@@ -471,8 +471,8 @@ void BleService::testWrite() {
 
     const std::string value{"1337"};
     int result{ble_gattc_write_flat(peer.connectionHandle,
-                                    characteristic->definition.val_handle, &value,
-                                    sizeof(value), nullptr, nullptr)};
+                                    characteristic->definition.val_handle, value.c_str(),
+                                    value.length(), nullptr, nullptr)};
     if (result != 0) {
         ESP_LOGE(logTag, "Write failed, result: %d", result);
     }
