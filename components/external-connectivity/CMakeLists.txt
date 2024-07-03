@@ -7,6 +7,7 @@ set(DEPENDENCIES
     "esp_http_client"
     "esp_modem"
     "fmt"
+    "nimble_central_utils"
     "nvs_flash"
     "ttn-esp32")
 

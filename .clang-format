@@ -3,3 +3,4 @@ AccessModifierOffset: -4
 ColumnLimit: 89
 FixNamespaceComments: true
 IndentWidth: 4
+AllowShortFunctionsOnASingleLine: false
