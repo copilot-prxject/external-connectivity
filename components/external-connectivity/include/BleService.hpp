@@ -26,9 +26,9 @@ struct GattService {
 
 struct Peer {
     uint16_t connectionHandle;
-    std::string address;
-
     std::list<GattService> services;
+    uint16_t previousCharacteristicHandle;
+    GattService *currentService;
 };
 
 class BleService {
@@ -63,6 +63,8 @@ private:
     static int onDescriptorDiscovery(uint16_t connection, const ble_gatt_error *error,
                                      uint16_t chr_val_handle,
                                      const ble_gatt_dsc *descriptor, void *arg);
+
+    static void completeDiscovery();
     static void terminateConnection();
 
     static void testWrite();
