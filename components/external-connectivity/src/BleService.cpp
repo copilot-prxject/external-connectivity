@@ -53,8 +53,8 @@ const std::array targetServices{
     GATT_SVC_CONTROL_MEASUREMENT_MODULE,
 };
 
-// const auto targetUuid{GATT_CHR_TEMPERATURE_CONTROL};
-const auto targetUuid{0x5101};
+const auto targetUuid{GATT_CHR_TEMPERATURE_CONTROL};
+// const auto targetUuid{0x5101};
 
 std::string to_string(const ble_addr_t &address) {
     return std::format("{:02X}:{:02X}:{:02X}:{:02X}:{:02X}:{:02X}", address.val[5],
