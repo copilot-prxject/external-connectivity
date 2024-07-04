@@ -191,6 +191,7 @@ int BleService::onEvent(ble_gap_event *event, void *arg) {
             os_mbuf_copydata(event->notify_rx.om, 0, sizeof(buffer), buffer);
             buffer[sizeof(buffer)] = '\0';
             ESP_LOGD(logTag, "Data: %s", buffer);
+            lora::LoraService::sendUplinkMessage(buffer);
             break;
         }
         default:

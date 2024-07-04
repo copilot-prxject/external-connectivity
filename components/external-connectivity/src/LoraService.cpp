@@ -32,7 +32,7 @@ void LoraService::loop(void* pvParameter) {
             uplinkQueue.pop();
         }
 
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(5000));
     }
 }
 
