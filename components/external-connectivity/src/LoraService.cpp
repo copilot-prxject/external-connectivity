@@ -51,6 +51,11 @@ void LoraService::sendUplinkMessage(const std::string& message) {
     if (!networkJoined) {
         ESP_LOGE(logTag, "Network not joined yet, the message will be sent later");
     }
+    constexpr size_t maxQueueSize{100};
+    if (uplinkQueue.size() >= maxQueueSize) {
+        ESP_LOGE(logTag, "Uplink queue is full, the message will be dropped");
+        return;
+    }
     uplinkQueue.push(message);
 }
 
