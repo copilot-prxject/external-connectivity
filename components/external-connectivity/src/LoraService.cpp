@@ -49,8 +49,7 @@ void LoraService::onDownlinkMessage(const uint8_t* message, size_t length, port_
 
 void LoraService::sendUplinkMessage(const std::string& message) {
     if (!networkJoined) {
-        ESP_LOGE(logTag, "Network not joined yet, cannot send the message");
-        return;
+        ESP_LOGE(logTag, "Network not joined yet, the message will be sent later");
     }
     uplinkQueue.push(message);
 }
