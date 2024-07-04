@@ -46,8 +46,8 @@ const auto targetAddress{[] {
     return address;
 }()};
 
-// const auto targetService{GATT_SVC_CONTROL_MEASUREMENT_MODULE};
-const auto targetService{0x5100};
+const auto targetService{GATT_SVC_CONTROL_MEASUREMENT_MODULE};
+// const auto targetService{0x5100};
 const std::array targetServices{
     // GATT_SVC_OBD_MODULE,
     GATT_SVC_CONTROL_MEASUREMENT_MODULE,
