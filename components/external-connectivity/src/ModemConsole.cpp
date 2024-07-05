@@ -1,6 +1,5 @@
 #include "ModemConsole.hpp"
 
-#include <magic_enum.hpp>
 #include <map>
 #include <numeric>
 

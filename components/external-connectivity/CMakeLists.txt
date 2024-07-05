@@ -18,4 +18,3 @@ idf_component_register(
 )
 
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wno-missing-field-initializers)
-target_link_libraries(${COMPONENT_LIB} magic_enum)

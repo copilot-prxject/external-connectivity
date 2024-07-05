@@ -2,8 +2,6 @@
 
 #include <esp_log.h>
 
-#include <magic_enum.hpp>
-
 namespace http {
 constexpr auto logTag = "http";
 
@@ -33,8 +31,7 @@ esp_err_t handleHttpEvent(esp_http_client_event_t *event) {
             ESP_LOGD(logTag, "HTTP_EVENT_DISCONNECTED");
             break;
         default:
-            ESP_LOGD(logTag, "Unhandled event %s",
-                     magic_enum::enum_name(event->event_id).data());
+            ESP_LOGD(logTag, "Unhandled event %u", event->event_id);
             break;
     }
     return ESP_OK;

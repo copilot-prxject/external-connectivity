@@ -71,10 +71,10 @@ void onSync() {
     ESP_LOGD(logTag, "Synchronized");
     ESP_ERROR_CHECK(ble_hs_util_ensure_addr(0));
     ESP_ERROR_CHECK(ble_hs_id_infer_auto(0, &addressType));
-    scan();
+    scanDevices();
 }
 
-void scan() {
+void scanDevices() {
     const ble_gap_disc_params discoveryParams{
         .itvl = 0,
         .window = 0,
@@ -114,13 +114,13 @@ int onEvent(ble_gap_event *event, void *arg) {
                 ESP_LOGD(logTag, "Services discovered");
             } else {
                 ESP_LOGW(logTag, "Connection failed, status: %d", event->connect.status);
-                scan();
+                scanDevices();
             }
             break;
         case BLE_GAP_EVENT_DISCONNECT:
             ESP_LOGI(logTag, "Disconnected");
             peer.connectionHandle = 0;
-            scan();
+            scanDevices();
             break;
         case BLE_GAP_EVENT_NOTIFY_RX: {
             ESP_LOGD(logTag,
