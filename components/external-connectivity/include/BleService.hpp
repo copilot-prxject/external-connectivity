@@ -38,5 +38,7 @@ void tryConnecting(const ble_gap_event &event);
 bool shouldConnect(const ble_gap_event &event);
 
 void onDiscoveryComplete(const peer *peer, int status, void *arg);
+void subscribeToNotifications(const peer &peer);
+void subscribe(const peer &peer, const peer_chr &characteristic);
 
 }  // namespace extcon::ble

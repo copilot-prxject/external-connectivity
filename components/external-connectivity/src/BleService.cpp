@@ -3,6 +3,7 @@
 #include <copilot/BleConsts.h>
 #include <sys/queue.h>
 
+#include <InternalMappings.hpp>
 #include <LoraService.hpp>
 #include <algorithm>
 #include <format>
@@ -12,6 +13,7 @@
 #include "esp_err.h"
 #include "esp_log.h"
 #include "host/ble_gap.h"
+#include "host/ble_gatt.h"
 #include "host/ble_hs.h"
 #include "host/util/util.h"
 #include "nimble/nimble_port.h"
@@ -25,6 +27,8 @@
 #endif
 
 namespace {
+
+using extcon::Uuid;
 
 constexpr auto logTag{"ble"};
 constexpr auto deviceName{"ext-con"};
@@ -40,6 +44,19 @@ std::string to_upper(const std::string &str) {
     std::string upperStr{str};
     std::transform(upperStr.begin(), upperStr.end(), upperStr.begin(), ::toupper);
     return upperStr;
+}
+
+peer_chr *getCharacteristic(const peer &peer, Uuid uuid) {
+    peer_svc *service;
+    SLIST_FOREACH(service, &peer.svcs, next) {
+        peer_chr *characteristic;
+        SLIST_FOREACH(characteristic, &service->chrs, next) {
+            if (characteristic->chr.uuid.u16.value == uuid) {
+                return characteristic;
+            }
+        }
+    }
+    return nullptr;
 }
 
 void debugPrint(const peer *peer) {
@@ -248,6 +265,31 @@ void onDiscoveryComplete(const peer *peer, int status, void *arg) {
 
     ESP_LOGI(logTag, "Service discovery complete");
     debugPrint(peer);
+
+    subscribeToNotifications(*peer);
+}
+
+void subscribeToNotifications(const peer &peer) {
+    for (const auto &uuid : subscribableCharacteristics) {
+        const auto characteristic{getCharacteristic(peer, uuid)};
+        if (characteristic == nullptr) {
+            ESP_LOGW(logTag, "Subscribable characteristic not found: 0x%02X", uuid);
+            continue;
+        }
+        subscribe(peer, *characteristic);
+    }
+}
+
+void subscribe(const peer &peer, const peer_chr &characteristic) {
+    const auto ccdDescriptor{characteristic.dscs.slh_first->dsc.handle};
+    constexpr uint8_t subscribeValue[]{0x01, 0x00};
+    auto result{ble_gattc_write_flat(peer.conn_handle, ccdDescriptor, subscribeValue,
+                                     sizeof(subscribeValue), nullptr, nullptr)};
+
+    if (result != 0) {
+        ESP_LOGE(logTag, "Failed to subscribe to characteristic 0x%02X, result: %d",
+                 characteristic.chr.uuid.u16.value, result);
+    }
 }
 
 }  // namespace extcon::ble
