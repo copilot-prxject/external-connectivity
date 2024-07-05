@@ -5,7 +5,7 @@
 #include <cxx_include/esp_modem_api.hpp>
 #include <cxx_include/esp_modem_dte.hpp>
 
-namespace gsm {
+namespace extcon::gsm {
 
 class GsmService {
 public:
@@ -23,4 +23,4 @@ private:
     esp_netif_t* netif;
 };
 
-}  // namespace gsm
+}  // namespace extcon::gsm

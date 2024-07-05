@@ -2,7 +2,8 @@
 
 #include <esp_log.h>
 
-namespace http {
+namespace extcon::http {
+
 constexpr auto logTag = "http";
 
 esp_err_t handleHttpEvent(esp_http_client_event_t *event) {
@@ -89,4 +90,5 @@ esp_err_t HttpClient::post(std::string url, std::map<std::string, std::string> d
 
     return ESP_OK;
 }
-}  // namespace http
+
+}  // namespace extcon::http

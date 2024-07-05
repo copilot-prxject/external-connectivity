@@ -1,6 +1,7 @@
 #include "BleService.hpp"
 
 #include <copilot/BleConsts.h>
+#include <sys/queue.h>
 
 #include <LoraService.hpp>
 #include <algorithm>
@@ -41,9 +42,37 @@ std::string to_upper(const std::string &str) {
     return upperStr;
 }
 
+void debugPrint(const peer *peer) {
+    peer_svc *service;
+    peer_chr *characteristic;
+    peer_dsc *descriptor;
+    ESP_LOGD(logTag, "============================================================");
+    ESP_LOGD(logTag, "Services:");
+    SLIST_FOREACH(service, &peer->svcs, next) {
+        ESP_LOGD(logTag, "------------------------------------------------------------");
+        ESP_LOGD(logTag, "    UUID:  0x%02X", service->svc.uuid.u16.value);
+        ESP_LOGD(logTag, "    start: %d", service->svc.start_handle);
+        ESP_LOGD(logTag, "    end:   %d", service->svc.end_handle);
+        SLIST_FOREACH(characteristic, &service->chrs, next) {
+            ESP_LOGD(logTag, "    Characteristic:");
+            ESP_LOGD(logTag, "        UUID:  0x%02X",
+                     characteristic->chr.uuid.u16.value);
+            ESP_LOGD(logTag, "        def_handle: %d", characteristic->chr.def_handle);
+            ESP_LOGD(logTag, "        val_handle: %d", characteristic->chr.val_handle);
+            SLIST_FOREACH(descriptor, &characteristic->dscs, next) {
+                ESP_LOGD(logTag, "        Descriptor:");
+                ESP_LOGD(logTag, "            UUID:  0x%02X",
+                         descriptor->dsc.uuid.u16.value);
+                ESP_LOGD(logTag, "            handle: %d", descriptor->dsc.handle);
+            }
+        }
+    }
+    ESP_LOGD(logTag, "============================================================");
+}
+
 }  // namespace
 
-namespace ble {
+namespace extcon::ble {
 
 void BleService::setValue(uint8_t index, const std::string &value) {
     ESP_LOGI(logTag, "Setting value for characteristic %d: %s", index, value.c_str());
@@ -218,6 +247,7 @@ void onDiscoveryComplete(const peer *peer, int status, void *arg) {
     }
 
     ESP_LOGI(logTag, "Service discovery complete");
+    debugPrint(peer);
 }
 
-}  // namespace ble
+}  // namespace extcon::ble

@@ -10,6 +10,8 @@
 #include <LoraService.hpp>
 #include <ModemConsole.hpp>
 
+using namespace extcon;
+
 constexpr auto logTag = "main";
 
 std::unique_ptr<gsm::GsmService> gsmService;

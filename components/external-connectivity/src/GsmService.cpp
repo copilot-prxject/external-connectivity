@@ -1,6 +1,7 @@
 #include "GsmService.hpp"
 
-namespace gsm {
+namespace extcon::gsm {
+
 constexpr auto logTag = "gsm";
 
 GsmService::GsmService(const char* apn) {
@@ -35,4 +36,4 @@ void GsmService::configure(const char* apn) {
     uartConfig.event_queue_size = 30;
 }
 
-}  // namespace gsm
+}  // namespace extcon::gsm

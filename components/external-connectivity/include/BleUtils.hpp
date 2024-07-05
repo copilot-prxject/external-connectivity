@@ -7,7 +7,7 @@
 #undef min
 #undef max
 
-namespace ble {
+namespace extcon::ble {
 
 struct GattCharacteristic {
     ble_gatt_chr definition;
@@ -56,4 +56,4 @@ GattService *getService(uint16_t serviceUuid);
 GattService *getServiceByHandle(uint16_t handle);
 GattCharacteristic *getCharacteristic(uint16_t serviceUuid, uint16_t characteristicUuid);
 
-}  // namespace ble
+}  // namespace extcon::ble

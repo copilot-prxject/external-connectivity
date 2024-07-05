@@ -10,7 +10,7 @@
 #undef min
 #undef max
 
-namespace ble {
+namespace extcon::ble {
 
 class BleService {
 public:
@@ -39,4 +39,4 @@ bool shouldConnect(const ble_gap_event &event);
 
 void onDiscoveryComplete(const peer *peer, int status, void *arg);
 
-}  // namespace ble
+}  // namespace extcon::ble

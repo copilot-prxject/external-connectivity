@@ -5,7 +5,8 @@
 #include <map>
 #include <string>
 
-namespace http {
+namespace extcon::http {
+
 class HttpClient {
 public:
     HttpClient() = default;
@@ -15,4 +16,5 @@ public:
 
 private:
 };
-}  // namespace http
+
+}  // namespace extcon::http

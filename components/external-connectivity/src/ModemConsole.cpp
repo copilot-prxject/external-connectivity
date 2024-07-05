@@ -3,7 +3,8 @@
 #include <map>
 #include <numeric>
 
-namespace repl {
+namespace extcon::repl {
+
 using esp_modem::modem_mode;
 
 constexpr auto logTag = "repl";
@@ -142,4 +143,5 @@ void CommandRegistry::registerCommands() {
         ESP_ERROR_CHECK(esp_console_cmd_register(&command));
     });
 }
-}  // namespace repl
+
+}  // namespace extcon::repl

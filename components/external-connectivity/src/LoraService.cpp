@@ -6,7 +6,7 @@
 
 #include <BleService.hpp>
 
-namespace lora {
+namespace extcon::lora {
 
 constexpr auto logTag = "lora";
 
@@ -56,7 +56,8 @@ void LoraService::sendUplinkMessage(const std::string& message) {
 }
 
 LoraService::LoraService(std::string appEui, std::string appKey, std::string devEui)
-    : appEui{appEui}, appKey{appKey}, devEui{devEui} {}
+    : appEui{appEui}, appKey{appKey}, devEui{devEui} {
+}
 
 bool LoraService::init() {
     spi_bus_config_t busConfig{};
@@ -96,4 +97,4 @@ void LoraService::joinNetwork() {
     ESP_LOGI(logTag, "Network joined successfully");
 }
 
-}  // namespace lora
+}  // namespace extcon::lora

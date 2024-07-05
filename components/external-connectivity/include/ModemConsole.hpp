@@ -8,7 +8,8 @@
 #include <cxx_include/esp_modem_primitives.hpp>
 #include <vector>
 
-namespace repl {
+namespace extcon::repl {
+
 using gsm::GsmService;
 using http::HttpClient;
 using lora::LoraService;
@@ -44,4 +45,5 @@ private:
     static LoraService *loraService;
     std::vector<esp_console_cmd_t> commands;
 };
-}  // namespace repl
+
+}  // namespace extcon::repl
