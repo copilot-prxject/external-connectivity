@@ -330,6 +330,7 @@ void BleService::write(uint16_t valueHandle, const std::string &value) {
         ESP_LOGW(logTag, "No connected peer");
         return;
     }
+    ESP_LOGD(logTag, "Writing value: %s", value.c_str());
     auto result{ble_gattc_write_flat(connectedPeer->conn_handle, valueHandle,
                                      value.data(), value.size(), nullptr, nullptr)};
     if (result != 0) {
