@@ -6,6 +6,8 @@
 
 #include <BleService.hpp>
 
+#include "InternalMappings.hpp"
+
 namespace extcon::lora {
 
 constexpr auto logTag = "lora";
@@ -44,12 +46,18 @@ void LoraService::onDownlinkMessage(const uint8_t* message, size_t length, port_
     std::string messageString{reinterpret_cast<const char*>(message), length};
     ESP_LOGI(logTag, "Message received: \"%s\", length: %d, port: %d",
              messageString.c_str(), length, port);
-    ble::BleService::setValue(port - 1, messageString);
+
+    const auto uuid{portToUuid.at(port)};
+    ble::BleService::writeValue(uuid, messageString);
 }
 
 void LoraService::sendUplinkMessage(const std::string& message) {
     if (!networkJoined) {
-        ESP_LOGE(logTag, "Network not joined yet, cannot send the message");
+        ESP_LOGW(logTag, "Network not joined yet, the message will be sent later");
+    }
+    constexpr size_t maxQueueSize{100};
+    if (uplinkQueue.size() >= maxQueueSize) {
+        ESP_LOGW(logTag, "Uplink queue is full, the message will be dropped");
         return;
     }
     uplinkQueue.push(message);

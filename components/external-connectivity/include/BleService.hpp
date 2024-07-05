@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "InternalMappings.hpp"
 #include "host/ble_hs.h"
 // Comment to avoid sorting includes due to `esp_central.h` external dependency
 #include "esp_central.h"
@@ -16,29 +17,33 @@ class BleService {
 public:
     BleService() = default;
 
-    static void setValue(uint8_t index, const std::string &value);
+    static void writeValue(Uuid uuid, const std::string &value);
 
     bool init();
     void start();
+
+    static const peer *connectedPeer;
+
+private:
+    static void loop(void *);
+    static void scanDevices();
+
+    static void onReset(int reason);
+    static void onSync();
+
+    static int onEvent(ble_gap_event *event, void *arg);
+    static int handleEventDiscovery(const ble_gap_event &event);
+    static int handleEventConnect(const ble_gap_event &event);
+    static int handleEventDisconnect(const ble_gap_event &event);
+    static int handleEventNotifyDownlink(const ble_gap_event &event);
+
+    static void tryConnecting(const ble_gap_event &event);
+    static bool shouldConnect(const ble_gap_event &event);
+
+    static void onDiscoveryComplete(const peer *peer, int status, void *arg);
+    static void subscribeToNotifications(const peer &peer);
+    static void subscribe(const peer &peer, const peer_chr &characteristic);
+    static void write(uint16_t valueHandle, const std::string &value);
 };
-
-void loop(void *);
-void scanDevices();
-
-void onReset(int reason);
-void onSync();
-
-int onEvent(ble_gap_event *event, void *arg);
-int handleEventDiscovery(const ble_gap_event &event);
-int handleEventConnect(const ble_gap_event &event);
-int handleEventDisconnect(const ble_gap_event &event);
-int handleEventNotifyDownlink(const ble_gap_event &event);
-
-void tryConnecting(const ble_gap_event &event);
-bool shouldConnect(const ble_gap_event &event);
-
-void onDiscoveryComplete(const peer *peer, int status, void *arg);
-void subscribeToNotifications(const peer &peer);
-void subscribe(const peer &peer, const peer_chr &characteristic);
 
 }  // namespace extcon::ble

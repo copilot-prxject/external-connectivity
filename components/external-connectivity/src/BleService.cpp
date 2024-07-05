@@ -59,6 +59,19 @@ peer_chr *getCharacteristic(const peer &peer, Uuid uuid) {
     return nullptr;
 }
 
+Uuid getUuid(const peer &peer, uint16_t attributeHandle) {
+    peer_svc *service;
+    SLIST_FOREACH(service, &peer.svcs, next) {
+        peer_chr *characteristic;
+        SLIST_FOREACH(characteristic, &service->chrs, next) {
+            if (characteristic->chr.val_handle == attributeHandle) {
+                return characteristic->chr.uuid.u16.value;
+            }
+        }
+    }
+    return 0;
+}
+
 void debugPrint(const peer *peer) {
     peer_svc *service;
     peer_chr *characteristic;
@@ -91,8 +104,19 @@ void debugPrint(const peer *peer) {
 
 namespace extcon::ble {
 
-void BleService::setValue(uint8_t index, const std::string &value) {
-    ESP_LOGI(logTag, "Setting value for characteristic %d: %s", index, value.c_str());
+const peer *BleService::connectedPeer = nullptr;
+
+void BleService::writeValue(Uuid uuid, const std::string &value) {
+    if (connectedPeer == nullptr) {
+        ESP_LOGW(logTag, "No connected peer");
+        return;
+    }
+    auto characteristic{getCharacteristic(*connectedPeer, uuid)};
+    if (characteristic == nullptr) {
+        ESP_LOGW(logTag, "Characteristic not found: 0x%02X", uuid);
+        return;
+    }
+    write(characteristic->chr.val_handle, value);
 }
 
 bool BleService::init() {
@@ -118,12 +142,12 @@ void BleService::start() {
     nimble_port_freertos_init(loop);
 }
 
-void loop(void *) {
+void BleService::loop(void *) {
     nimble_port_run();
     nimble_port_freertos_deinit();
 }
 
-void scanDevices() {
+void BleService::scanDevices() {
     constexpr ble_gap_disc_params discoveryParams{
         .itvl = 0,
         .window = 0,
@@ -137,18 +161,18 @@ void scanDevices() {
         ble_gap_disc(addressType, BLE_HS_FOREVER, &discoveryParams, onEvent, nullptr));
 }
 
-void onReset(int reason) {
+void BleService::onReset(int reason) {
     ESP_LOGD(logTag, "Resetting, reason: %d", reason);
 }
 
-void onSync() {
+void BleService::onSync() {
     ESP_LOGD(logTag, "Synchronized");
     ESP_ERROR_CHECK(ble_hs_util_ensure_addr(0));
     ESP_ERROR_CHECK(ble_hs_id_infer_auto(0, &addressType));
     scanDevices();
 }
 
-int onEvent(ble_gap_event *event, void *arg) {
+int BleService::onEvent(ble_gap_event *event, void *arg) {
     assert(event != nullptr);
     int result{0};
 
@@ -176,13 +200,13 @@ int onEvent(ble_gap_event *event, void *arg) {
     return result;
 }
 
-int handleEventDiscovery(const ble_gap_event &event) {
+int BleService::handleEventDiscovery(const ble_gap_event &event) {
     ESP_LOGD(logTag, "Found address: %s", to_string(event.disc.addr).c_str());
     tryConnecting(event);
     return 0;
 }
 
-int handleEventConnect(const ble_gap_event &event) {
+int BleService::handleEventConnect(const ble_gap_event &event) {
     if (event.connect.status == 0) {
         int result{peer_add(event.connect.conn_handle)};
         if (result != 0) {
@@ -197,27 +221,39 @@ int handleEventConnect(const ble_gap_event &event) {
     return 0;
 }
 
-int handleEventDisconnect(const ble_gap_event &event) {
+int BleService::handleEventDisconnect(const ble_gap_event &event) {
     ESP_LOGI(logTag, "Disconnected");
     peer_delete(event.disconnect.conn.conn_handle);
     scanDevices();
     return 0;
 }
 
-int handleEventNotifyDownlink(const ble_gap_event &event) {
-    ESP_LOGD(logTag,
-             "Notification received %s, conn_handle=%d attr_handle=%d attr_len=%d",
-             event.notify_rx.indication ? "indication" : "notification",
-             event.notify_rx.conn_handle, event.notify_rx.attr_handle,
-             OS_MBUF_PKTLEN(event.notify_rx.om));
+int BleService::handleEventNotifyDownlink(const ble_gap_event &event) {
     char buffer[OS_MBUF_PKTLEN(event.notify_rx.om) + 1];
     os_mbuf_copydata(event.notify_rx.om, 0, sizeof(buffer), buffer);
     buffer[sizeof(buffer)] = '\0';
-    ESP_LOGD(logTag, "Data: %s", buffer);
+    ESP_LOGD(logTag, "Notification received: %s", buffer);
+
+    const auto uuid{getUuid(*connectedPeer, event.notify_rx.attr_handle)};
+    if (uuid == 0) {
+        ESP_LOGW(logTag, "Characteristic not found for handle: %d",
+                 event.notify_rx.attr_handle);
+        return 0;
+    }
+    if (uuidToType.find(uuid) == uuidToType.end()) {
+        ESP_LOGW(logTag, "UUID not found in mapping: 0x%02X", uuid);
+        return 0;
+    }
+    const auto type{uuidToType.at(uuid)};
+    const auto value{std::string{buffer}};
+    const auto message{std::format("{}={}", type, value)};
+    ESP_LOGD(logTag, "Sending message: %s", message.c_str());
+    lora::LoraService::sendUplinkMessage(message);
+
     return 0;
 }
 
-void tryConnecting(const ble_gap_event &event) {
+void BleService::tryConnecting(const ble_gap_event &event) {
     const auto &advertisingReport{event.disc};
 
     if (!shouldConnect(event)) {
@@ -231,7 +267,7 @@ void tryConnecting(const ble_gap_event &event) {
                                     nullptr, onEvent, nullptr));
 }
 
-bool shouldConnect(const ble_gap_event &event) {
+bool BleService::shouldConnect(const ble_gap_event &event) {
     const auto &advertisingReport{event.disc};
 
     if (advertisingReport.event_type != BLE_HCI_ADV_RPT_EVTYPE_ADV_IND &&
@@ -256,7 +292,7 @@ bool shouldConnect(const ble_gap_event &event) {
     return true;
 }
 
-void onDiscoveryComplete(const peer *peer, int status, void *arg) {
+void BleService::onDiscoveryComplete(const peer *peer, int status, void *arg) {
     if (status != 0) {
         ESP_LOGE(logTag, "Discovery failed, status: %d", status);
         ble_gap_terminate(peer->conn_handle, BLE_ERR_REM_USER_CONN_TERM);
@@ -264,12 +300,13 @@ void onDiscoveryComplete(const peer *peer, int status, void *arg) {
     }
 
     ESP_LOGI(logTag, "Service discovery complete");
-    debugPrint(peer);
+    connectedPeer = peer;
 
-    subscribeToNotifications(*peer);
+    debugPrint(connectedPeer);
+    subscribeToNotifications(*connectedPeer);
 }
 
-void subscribeToNotifications(const peer &peer) {
+void BleService::subscribeToNotifications(const peer &peer) {
     for (const auto &uuid : subscribableCharacteristics) {
         const auto characteristic{getCharacteristic(peer, uuid)};
         if (characteristic == nullptr) {
@@ -280,15 +317,23 @@ void subscribeToNotifications(const peer &peer) {
     }
 }
 
-void subscribe(const peer &peer, const peer_chr &characteristic) {
-    const auto ccdDescriptor{characteristic.dscs.slh_first->dsc.handle};
+void BleService::subscribe(const peer &peer, const peer_chr &characteristic) {
+    const auto ccdDescriptorHandle{characteristic.dscs.slh_first->dsc.handle};
     constexpr uint8_t subscribeValue[]{0x01, 0x00};
-    auto result{ble_gattc_write_flat(peer.conn_handle, ccdDescriptor, subscribeValue,
-                                     sizeof(subscribeValue), nullptr, nullptr)};
+    write(ccdDescriptorHandle,
+          std::string{reinterpret_cast<const char *>(subscribeValue),
+                      sizeof(subscribeValue)});
+}
 
+void BleService::write(uint16_t valueHandle, const std::string &value) {
+    if (connectedPeer == nullptr) {
+        ESP_LOGW(logTag, "No connected peer");
+        return;
+    }
+    auto result{ble_gattc_write_flat(connectedPeer->conn_handle, valueHandle,
+                                     value.data(), value.size(), nullptr, nullptr)};
     if (result != 0) {
-        ESP_LOGE(logTag, "Failed to subscribe to characteristic 0x%02X, result: %d",
-                 characteristic.chr.uuid.u16.value, result);
+        ESP_LOGE(logTag, "Failed to write value, result: %d", result);
     }
 }
 
