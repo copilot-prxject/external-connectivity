@@ -120,8 +120,6 @@ void BleService::writeValue(Uuid uuid, const std::string &value) {
 }
 
 bool BleService::init() {
-    esp_log_level_set(logTag, ESP_LOG_DEBUG);
-
     ESP_ERROR_CHECK(nimble_port_init());
 
     ble_hs_cfg.gatts_register_cb = nullptr;
